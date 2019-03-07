@@ -29,17 +29,17 @@ static THD_FUNCTION(Thread1, arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while (true) {
-    palSetLine(LINE_LED1);
+ //   palSetLine(LINE_LED1);
     chThdSleepMilliseconds(50);
-    palSetLine(LINE_LED2);
+ //   palSetLine(LINE_LED2);
     chThdSleepMilliseconds(50);
-    palSetLine(LINE_LED3);
+ //   palSetLine(LINE_LED3);
     chThdSleepMilliseconds(200);
-    palClearLine(LINE_LED1);
+ //   palClearLine(LINE_LED1);
     chThdSleepMilliseconds(50);
-    palClearLine(LINE_LED2);
+ //   palClearLine(LINE_LED2);
     chThdSleepMilliseconds(50);
-    palClearLine(LINE_LED3);
+ //   palClearLine(LINE_LED3);
     chThdSleepMilliseconds(200);
   }
 }
@@ -74,10 +74,10 @@ int main(void) {
    * sleeping in a loop and check the button state.
    */
   while (true) {
-    if (palReadLine(LINE_BUTTON)) {
-      test_execute((BaseSequentialStream *)&SD3, &rt_test_suite);
-      test_execute((BaseSequentialStream *)&SD3, &oslib_test_suite);
-    }
+   // if (palReadLine(LINE_BUTTON)) {
+   //   test_execute((BaseSequentialStream *)&SD3, &rt_test_suite);
+   //   test_execute((BaseSequentialStream *)&SD3, &oslib_test_suite);
+   // }
     chThdSleepMilliseconds(500);
   }
 }

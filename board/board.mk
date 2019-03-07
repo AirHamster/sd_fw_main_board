@@ -1,8 +1,8 @@
 # List of all the board related files.
-BOARDSRC = $(CHIBIOS)/os/hal/boards/ST_NUCLEO144_F767ZI/board.c
+BOARDSRC = ./board/board.c
 
 # Required include directories
-BOARDINC = $(CHIBIOS)/os/hal/boards/ST_NUCLEO144_F767ZI
+BOARDINC = ./board
 
 # Shared variables
 ALLCSRC += $(BOARDSRC)
