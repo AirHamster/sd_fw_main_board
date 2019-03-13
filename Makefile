@@ -77,7 +77,15 @@ endif
 #
 # Architecture or project specific options
 ##############################################################################
+USE_DEBUG_SHELL = TRUE
+USE_SD_SHELL = TRUE
+USE_MPU_9250_MODULE = TRUE
+USE_UBLOX_GPS_MODULE = TRUE
+USE_IRIDIUM_9603_MODULE = TRUE
 
+USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL} -DUSE_SD_SHELL=${USE_SD_SHELL}\
+-DUSE_MPU_9250_MODULE=${USE_MPU_9250_MODULE} -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
+-DUSE_IRIDIUM_9603_MODULE=${USE_IRIDIUM_9603_MODULE}
 ##############################################################################
 # Project, target, sources and paths
 #
@@ -112,7 +120,11 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 include $(CHIBIOS)/test/lib/test.mk
 include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+include $(CHIBIOS)/os/various/shell/shell.mk
 
+#User makefiles
+include ./sd_modules/sd_modules.mk
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F76xxI.ld
 
@@ -150,7 +162,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = ${USER_CFLAGS}
 
 # Define ASM defines here
 UADEFS =

@@ -19,6 +19,10 @@
 #include "rt_test_root.h"
 #include "oslib_test_root.h"
 
+#include "shell.h"
+#include "chprintf.h"
+
+
 /*
  * This is a periodic thread that does absolutely nothing except flashing
  * a LED.
@@ -29,17 +33,17 @@ static THD_FUNCTION(Thread1, arg) {
   (void)arg;
   chRegSetThreadName("blinker");
   while (true) {
- //   palSetLine(LINE_LED1);
+    palSetLine(LINE_ORANGE_LED);
     chThdSleepMilliseconds(50);
- //   palSetLine(LINE_LED2);
+    palSetLine(LINE_GREEN_LED);
     chThdSleepMilliseconds(50);
- //   palSetLine(LINE_LED3);
+    palSetLine(LINE_RED_LED);
     chThdSleepMilliseconds(200);
- //   palClearLine(LINE_LED1);
+    palClearLine(LINE_ORANGE_LED);
     chThdSleepMilliseconds(50);
- //   palClearLine(LINE_LED2);
+    palClearLine(LINE_GREEN_LED);
     chThdSleepMilliseconds(50);
- //   palClearLine(LINE_LED3);
+    palClearLine(LINE_RED_LED);
     chThdSleepMilliseconds(200);
   }
 }
@@ -60,10 +64,17 @@ int main(void) {
   chSysInit();
 
   /*
-   * Activates the serial driver 3 using the driver default configuration.
+   * Activates the serial driver 1 using the driver default configuration.
    */
-  sdStart(&SD3, NULL);
+  sdStart(&SD1, NULL);
 
+  /*
+   * Shell manager initialization.
+   */
+#ifdef USE_SD_SHELL
+  shellInit();
+#endif
+  chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
   /*
    * Creates the example thread.
    */
