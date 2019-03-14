@@ -71,26 +71,20 @@ static THD_WORKING_AREA(spi_thread_1_wa, 512);
 static THD_FUNCTION(spi_thread_1, p) {
 
   (void)p;
+  int16_t accel_data[3];
+  int16_t gyro_data[3];
   txbuf[0] = 0xF5;
   txbuf[1] = 0xFF;
   chRegSetThreadName("SPI thread 1");
   while (true) {
-   // spiAcquireBus(&SPID2);              /* Acquire ownership of the bus.    */
     palSetLine(LINE_GREEN_LED);    /* LED ON.                          */
     chThdSleepMilliseconds(100);
-   palClearLine(LINE_MPU_CS);
-
-    //spiSend(&SPID2, 1, &send_message);	/* send request       */
-    //spiSelect(&SPID2);                  /* Slave Select assertion.          */
-    spiExchange(&SPID2, 2,
-    		txbuf, rxbuf);          /* Atomic transfer operations.      */
-  //  spiUnselect(&SPID2);                /* Slave Select de-assertion.       */
-    //spiReceive(&SPID2, 1, &read_buff);
-    spiReleaseBus(&SPID2);              /* Ownership release.               */
-    palSetLine(LINE_MPU_CS);
+    mpu_read_accel_data(&accel_data[0]);
+    mpu_read_gyro_data(&gyro_data[0]);
     palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
     chThdSleepMilliseconds(100);
-    chprintf((BaseSequentialStream*)&SD1, "MPU ans: %d %d \r\n", rxbuf[0], rxbuf[1]);
+    chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\n\n", accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2]);
+
   }
 }
 /*
@@ -118,6 +112,8 @@ int main(void) {
    */
   sdStart(&SD1, NULL);
   spiStart(&SPID2, &spi2_cfg);       /* Setup transfer parameters.       */
+
+
   //spiStart(&SPID2, &spi2_cfg);
   /*
    * Shell manager initialization.
@@ -125,6 +121,8 @@ int main(void) {
 #ifdef USE_SD_SHELL
   shellInit();
 #endif
+	chThdSleepMilliseconds(500);
+	mpu9250_init();
   chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
   /*
    * Creates the example thread.
@@ -132,7 +130,7 @@ int main(void) {
 
   chThdCreateStatic(spi_thread_1_wa, sizeof(spi_thread_1_wa),
                       NORMALPRIO + 1, spi_thread_1, NULL);
-  //chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
+  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
   /*
    * Normal main() thread activity, in this demo it does nothing except
    * sleeping in a loop and check the button state.
