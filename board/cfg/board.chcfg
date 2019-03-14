@@ -308,7 +308,7 @@
         Level="High"
         Speed="Maximum"
         Resistor="PullUp"
-        Mode="Alternate"
+        Mode="Input"
         Alternate="5" />
       <pin3
         ID="GPIOC_3"
