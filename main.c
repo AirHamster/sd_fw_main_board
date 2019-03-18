@@ -85,15 +85,15 @@ static THD_FUNCTION(spi_thread_1, p) {
     chThdSleepMilliseconds(100);
    // initAK8963(&destination[0]);
     whoami = get_mag_whoami();
-    //mpu_read_accel_data(&accel_data[0]);
-    //mpu_read_gyro_data(&gyro_data[0]);
-    //mpu_read_mag_data(&mag_data[0]);
+    mpu_read_accel_data(&accel_data[0]);
+    mpu_read_gyro_data(&gyro_data[0]);
+    mpu_read_mag_data(&mag_data[0]);
     palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
     chThdSleepMilliseconds(100);
-    chprintf((BaseSequentialStream*)&SD1, "MAG ASN: %x", whoami);
-   // chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-   // 									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
-   // chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\n\n",
+   // chprintf((BaseSequentialStream*)&SD1, "MAG ASN: %x", whoami);
+    chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+    //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\n\n",
     //    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2]);
 
   }
@@ -135,7 +135,7 @@ int main(void) {
 	chThdSleepMilliseconds(500);
 	mpu9250_init();
 	float destination[3];
-	//initAK8963(&destination[0]);
+	initAK8963(&destination[0]);
   chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
   /*
    * Creates the example thread.
