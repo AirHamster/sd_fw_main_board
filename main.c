@@ -23,13 +23,8 @@
 #include "chprintf.h"
 
 #include "MPU9250.h"
+#include "neo-m8.h"
 
-static uint8_t txbuf[512];
-
-static uint8_t rxbuf[512];
-//static uint8_t send_message = WHO_AM_I_MPU9250 | 0x80;
-static uint8_t send_message = 0xFF;
-static uint8_t read_buff = 2;
 /*
  * Maximum speed SPI configuration (18MHz, CPHA=0, CPOL=0, MSb first).
  */
@@ -67,6 +62,11 @@ static THD_FUNCTION(Thread1, arg) {
   }
 }
 
+/*
+ *  This is thread that serve spi2 bus and provide communication with modules
+ *	MPU9250 and UBLOX NEO-M8P
+ */
+
 static THD_WORKING_AREA(spi_thread_1_wa, 512);
 static THD_FUNCTION(spi_thread_1, p) {
 
@@ -74,34 +74,29 @@ static THD_FUNCTION(spi_thread_1, p) {
   int16_t accel_data[3];
   int16_t gyro_data[3];
   int16_t mag_data[3];
-  float destination[3];
-
-  txbuf[0] = 0xF5;
-  txbuf[1] = 0xFF;
-  uint8_t whoami;
-  chRegSetThreadName("SPI thread 1");
+  uint8_t rxbuf[101];
+   //txbuf[0] = 0xF5;
+  //txbuf[1] = 0xFF;
+  int i = 0;
+   chRegSetThreadName("SPI thread 1");
   while (true) {
-    palSetLine(LINE_GREEN_LED);    /* LED ON.                          */
-    chThdSleepMilliseconds(100);
-   // initAK8963(&destination[0]);
-    whoami = get_mag_whoami();
+        chThdSleepMilliseconds(100);
+        palSetLine(LINE_GREEN_LED);    /* LED ON.                          */
+
     mpu_read_accel_data(&accel_data[0]);
     mpu_read_gyro_data(&gyro_data[0]);
-    mpu_read_mag_data(&mag_data[0]);
+    //mpu_read_mag_data(&mag_data[0]);
+    neo_read_bytes(&SPID2, 100, rxbuf);
     palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
     chThdSleepMilliseconds(100);
-   // chprintf((BaseSequentialStream*)&SD1, "MAG ASN: %x", whoami);
-    chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+    chprintf((BaseSequentialStream*)&SD1, "\nACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
     									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
-    //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\n\n",
-    //    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2]);
-
+    chprintf((BaseSequentialStream*)&SD1, "\n SPI:  ");
+    for (i = 0; i<100; i++){
+    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
+    }
   }
 }
-/*
- *  This is thread that serve spi2 bus and provide communication with modules
- *	MPU9250 and UBLOX NEO-M8P
- */
 
 /*
  * Application entry point.
@@ -130,13 +125,16 @@ int main(void) {
    * Shell manager initialization.
    */
 #ifdef USE_SD_SHELL
-  shellInit();
+  //shellInit();
+  //chprintf((BaseSequentialStream*)&SD1, "Shell initialized\r\n");
 #endif
-	chThdSleepMilliseconds(500);
+
 	mpu9250_init();
+	chThdSleepMilliseconds(100);
 	float destination[3];
 	initAK8963(&destination[0]);
-  chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
+	chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
+	chThdSleepMilliseconds(1000);
   /*
    * Creates the example thread.
    */
