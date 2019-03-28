@@ -24,9 +24,26 @@
 
 #include "MPU9250.h"
 #include "neo-m8.h"
+#include "xbee.h"
+#include "sd_shell_cmds.h"
+
+
 
 /*
- * Maximum speed SPI configuration (18MHz, CPHA=0, CPOL=0, MSb first).
+ * Maximum speed SPI configuration (3.3MHz, CPHA=0, CPOL=0, MSb first).
+ */
+static const SPIConfig spi1_cfg = {
+  false,
+  NULL,
+  GPIOA,
+  GPIOA_RF_868_CS,
+  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
+//  0,
+  0
+};
+
+/*
+ * Maximum speed SPI configuration (18MHz, CPHA=1, CPOL=1, MSb first).
  */
 static const SPIConfig spi2_cfg = {
   false,
@@ -51,50 +68,64 @@ static THD_FUNCTION(Thread1, arg) {
     chThdSleepMilliseconds(50);
    // palSetLine(LINE_GREEN_LED);
     chThdSleepMilliseconds(50);
-    palSetLine(LINE_RED_LED);
+   // palSetLine(LINE_RED_LED);
     chThdSleepMilliseconds(200);
     palClearLine(LINE_ORANGE_LED);
     chThdSleepMilliseconds(50);
    // palClearLine(LINE_GREEN_LED);
     chThdSleepMilliseconds(50);
-    palClearLine(LINE_RED_LED);
+   // palClearLine(LINE_RED_LED);
     chThdSleepMilliseconds(200);
   }
 }
+
+/*
+ * This is a thread that serve SPI1 bus with Xbee module
+ * and second CPU
+ */
+
+static THD_WORKING_AREA(spi1_thread_wa, 512);
+static THD_FUNCTION(spi1_thread, p){
+	(void)p;
+
+	chRegSetThreadName("spi1_thread");
+	while(true){
+		xbee_check_attn();
+		chThdSleepMilliseconds(2000);
+	}
+}
+
 
 /*
  *  This is thread that serve spi2 bus and provide communication with modules
  *	MPU9250 and UBLOX NEO-M8P
  */
 
-static THD_WORKING_AREA(spi_thread_1_wa, 512);
-static THD_FUNCTION(spi_thread_1, p) {
-
+static THD_WORKING_AREA(spi2_thread_wa, 512);
+static THD_FUNCTION(spi2_thread, p) {
   (void)p;
   int16_t accel_data[3];
   int16_t gyro_data[3];
   int16_t mag_data[3];
   uint8_t rxbuf[101];
-   //txbuf[0] = 0xF5;
-  //txbuf[1] = 0xFF;
   int i = 0;
-   chRegSetThreadName("SPI thread 1");
+   chRegSetThreadName("SPI2 thread");
   while (true) {
         chThdSleepMilliseconds(100);
-        palSetLine(LINE_GREEN_LED);    /* LED ON.                          */
-
-    mpu_read_accel_data(&accel_data[0]);
-    mpu_read_gyro_data(&gyro_data[0]);
+        palSetLine(LINE_GREEN_LED);
+    //mpu_read_accel_data(&accel_data[0]);
+    //mpu_read_gyro_data(&gyro_data[0]);
     //mpu_read_mag_data(&mag_data[0]);
     neo_read_bytes(&SPID2, 100, rxbuf);
-    palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
+    palClearLine(LINE_GREEN_LED);
     chThdSleepMilliseconds(100);
-    chprintf((BaseSequentialStream*)&SD1, "\nACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
-    chprintf((BaseSequentialStream*)&SD1, "\n SPI:  ");
+    //chprintf((BaseSequentialStream*)&SD1, "\nACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \n\r",
+    //									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+    chprintf(IFACE1, "SPI:  ");
     for (i = 0; i<100; i++){
-    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
+    	chprintf(IFACE1, "%x ", rxbuf[i]);
     }
+    chprintf(IFACE1, "\n\r");
   }
 }
 
@@ -116,8 +147,9 @@ int main(void) {
   /*
    * Activates the serial driver 1 using the driver default configuration.
    */
-  sdStart(&SD1, NULL);
-  spiStart(&SPID2, &spi2_cfg);       /* Setup transfer parameters.       */
+
+  spiStart(&SPID1, &spi1_cfg);
+  spiStart(&SPID2, &spi2_cfg);
 
 
   //spiStart(&SPID2, &spi2_cfg);
@@ -125,8 +157,11 @@ int main(void) {
    * Shell manager initialization.
    */
 #ifdef USE_SD_SHELL
-  //shellInit();
-  //chprintf((BaseSequentialStream*)&SD1, "Shell initialized\r\n");
+
+  sdStart(&SD1, NULL);
+  shellInit();
+#else
+  sdStart(&SD1, NULL);
 #endif
 
 	mpu9250_init();
@@ -135,17 +170,19 @@ int main(void) {
 	initAK8963(&destination[0]);
 	chprintf((BaseSequentialStream*)&SD1, "Hello World %dst test!\r\n", 1);
 	chThdSleepMilliseconds(1000);
-  /*
-   * Creates the example thread.
-   */
 
-  chThdCreateStatic(spi_thread_1_wa, sizeof(spi_thread_1_wa),
-                      NORMALPRIO + 1, spi_thread_1, NULL);
-  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO + 1, Thread1, NULL);
-  /*
-   * Normal main() thread activity, in this demo it does nothing except
-   * sleeping in a loop and check the button state.
-   */
+  chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa),
+                    NORMALPRIO , spi1_thread, NULL);
+  //chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa),
+   //                     NORMALPRIO + 1, spi2_thread, NULL);
+  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  //cmd_init();
+  while(true) {
+	  thread_t *shelltp = cmd_init();
+	        chThdWait(shelltp);               /* Waiting termination.             */
+	        chThdSleepMilliseconds(1000);
+      }
+
   while (true) {
    // if (palReadLine(LINE_BUTTON)) {
    //   test_execute((BaseSequentialStream *)&SD3, &rt_test_suite);
