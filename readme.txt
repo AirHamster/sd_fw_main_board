@@ -1,16 +1,13 @@
 *****************************************************************************
-** ChibiOS/RT port for ARM-Cortex-M7 STM32F767.                            **
+** ChibiOS/RT port for ARM-Cortex-M7 STM32F746G.                           **
 *****************************************************************************
 
 ** TARGET **
 
-The demo runs on an STM32 Nucleo144-F767ZI board.
+The demo runs on an ST STM32F769I-Discovery board.
 
 ** The Demo **
 
-The demo flashes the board LEDs using a thread, by pressing the button located
-on the board the test procedure is activated with output on the serial port
-SD3 (USART3, mapped on STLink v2-1 Virtual COM Port).
 
 ** Build Procedure **
 
