@@ -22,8 +22,6 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#define IFACE1 (BaseSequentialStream*)&SD1
-
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
@@ -63,6 +61,9 @@
  */
 #define STM32_VDD                   300U
 
+/*
+ * MCU type as defined in the ST header.
+ */
 #define STM32F767xx
 
 /*

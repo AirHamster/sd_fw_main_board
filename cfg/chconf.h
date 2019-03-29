@@ -691,7 +691,7 @@
  *          the system is halted.
  */
 #define CH_CFG_SYSTEM_HALT_HOOK(reason) {                                   \
-  GPIOB->ODR |= (1<<2);		\
+  /* System halt code here.*/                                               \
 }
 
 /**
