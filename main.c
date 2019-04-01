@@ -67,8 +67,8 @@ static THD_FUNCTION(spi1_thread, p){
 	while(true){
 		at2[9] = '\0';
 		palSetLine(LINE_RED_LED);
-		xbee_read(&SPID1, 2, argv);
-		xbee_create_at_read_message(at, at2);
+	//	xbee_read(&SPID1, 2, argv);
+	//	xbee_create_at_read_message(at, at2);
 		palClearLine(LINE_RED_LED);
 		chThdSleepMilliseconds(1000);
 
@@ -92,8 +92,8 @@ static THD_FUNCTION(spi2_thread, p) {
     mpu_read_mag_data(&mag_data[0]);
     palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
     chThdSleepMilliseconds(100);
-   // chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-   // 									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+    chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
 
   }
 }
