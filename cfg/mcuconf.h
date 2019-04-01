@@ -30,9 +30,13 @@
  * DMA priorities:
  * 0...3        Lowest...Highest.
  */
+
 #define STM32F7xx_MCUCONF
-//#define STM32F765_MCUCONF
+#define STM32F765_MCUCONF
 #define STM32F767_MCUCONF
+#define STM32F777_MCUCONF
+#define STM32F769_MCUCONF
+#define STM32F779_MCUCONF
 
 /*
  * HAL driver system settings.
@@ -303,7 +307,7 @@
 /*
  * SPI driver system settings.
  */
-#define STM32_SPI_USE_SPI1                  FALSE
+#define STM32_SPI_USE_SPI1                  TRUE
 #define STM32_SPI_USE_SPI2                  TRUE
 #define STM32_SPI_USE_SPI3                  FALSE
 #define STM32_SPI_USE_SPI4                  FALSE
