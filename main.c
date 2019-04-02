@@ -24,6 +24,30 @@
 #include "MPU9250.h"
 #include "sd_shell_cmds.h"
 #include "xbee.h"
+
+int16_t accel_data[3];
+int16_t gyro_data[3];
+int16_t mag_data[3];
+
+/*
+ * GPT14  callback.
+ */
+static void gpt14cb(GPTDriver *gptp)
+{
+	(void)gptp;
+	 palToggleLine(LINE_GREEN_LED);
+    mpu_read_accel_data(&accel_data[0]);
+   // mpu_read_gyro_data(&gyro_data[0]);
+   // mpu_read_mag_data(&mag_data[0]);
+
+    /* perform some function that needs to be done on a regular basis */
+  }
+
+static GPTConfig gpt14cfg =
+{
+  20000,      // Timer clock
+  gpt14cb        // Callback function
+};
 /*
  * Maximum speed SPI configuration (3.3MHz, CPHA=0, CPOL=0, MSb first).
  */
@@ -46,6 +70,8 @@ static const SPIConfig spi2_cfg = {
 //  0,
   0
 };
+
+
 
 /*
  * This is a thread that serve SPI1 bus with Xbee module
@@ -80,18 +106,10 @@ static THD_WORKING_AREA(spi2_thread_wa, 1024);
 static THD_FUNCTION(spi2_thread, p) {
 
   (void)p;
-  int16_t accel_data[3];
-  int16_t gyro_data[3];
-  int16_t mag_data[3];
+
   chRegSetThreadName("SPI thread 1");
   while (true) {
-    palSetLine(LINE_GREEN_LED);    /* LED ON.                          */
-    chThdSleepMilliseconds(100);
-    mpu_read_accel_data(&accel_data[0]);
-    mpu_read_gyro_data(&gyro_data[0]);
-    mpu_read_mag_data(&mag_data[0]);
-    palClearLine(LINE_GREEN_LED);    /* LED OFF.                          */
-    chThdSleepMilliseconds(100);
+    chThdSleepMilliseconds(300);
     chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
     									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
 
@@ -140,6 +158,8 @@ int main(void) {
   spiStart(&SPID1, &spi1_cfg);
   spiStart(&SPID2, &spi2_cfg);
 
+
+
   /*
      * Shell manager initialization.
      */
@@ -153,26 +173,37 @@ int main(void) {
 
   	mpu9250_init();
   	chThdSleepMilliseconds(100);
-  	float destination[3];
-  	initAK8963(&destination[0]);
+  	float calib[3];
+  	initAK8963(&calib[0]);
+  	chprintf((BaseSequentialStream*)&SD1, "Calibrating values: %f, %f, %f\n\r", calib[0], calib[1], calib[2]);
+  	palToggleLine(LINE_GREEN_LED);
+
   	chThdSleepMilliseconds(1000);
+    // set up the timer
+    gptStart(&GPTD14, &gpt14cfg);
+
 
   /*
    * Creates threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
   chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
-  chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
+ // chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
   chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+
   chThdSleepMilliseconds(1000);
+  // configure the timer to fire after 25 timer clock tics
+    //   The clock is running at 200,000Hz, so each tick is 50uS,
+    //   so 200,000 / 25 = 8,000Hz
+   // gptStartContinuous(&GPTD14, 20000);
   /*
    * Normal main() thread activity, in this demo it does nothing except
    * sleeping in a loop and check the button state.
    */
   while (true) {
-	  thread_t *shelltp = cmd_init();
-	        chThdWait(shelltp);               /* Waiting termination.             */
+	//  thread_t *shelltp = cmd_init();
+	//        chThdWait(shelltp);               /* Waiting termination.             */
 	  chThdSleepMilliseconds(5000);
 
   }
