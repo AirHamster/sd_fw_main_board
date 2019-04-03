@@ -25,7 +25,7 @@ endif
 
 # Linker extra options here.
 ifeq ($(USE_LDOPT),)
-  USE_LDOPT = 
+  USE_LDOPT = -lm
 endif
 
 # Enable this if you want link time optimizations (LTO).
@@ -88,7 +88,7 @@ SHELL_CONFIG_FILE = TRUE
 USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL} -DUSE_SD_SHELL=${USE_SD_SHELL}\
 -DUSE_MPU_9250_MODULE=${USE_MPU_9250_MODULE} -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
 -DUSE_IRIDIUM_9603_MODULE=${USE_IRIDIUM_9603_MODULE} -DUSE_XBEE_868_MODULE=${USE_XBEE_868_MODULE}\
--DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE} -DCHPRINTF_USE_FLOAT=1
+-DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE}
 
 
 ##############################################################################
@@ -179,6 +179,7 @@ ULIBDIR =
 
 # List all user libraries here
 ULIBS =
+
 
 #
 # End of user section

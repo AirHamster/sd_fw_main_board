@@ -19,15 +19,87 @@
 #include "rt_test_root.h"
 #include "oslib_test_root.h"
 #include "shell.h"
-#include "chprintf.h"
 
 #include "MPU9250.h"
 #include "sd_shell_cmds.h"
 #include "xbee.h"
-
+#include "quaternionFilters.h"
+#include "chprintf.h"
+float PI = CONST_PI;
+float GyroMeasError = CONST_GME; // gyroscope measurement error in rads/s (start at 60 deg/s), then reduce after ~10 s to 3
+float beta = CONST_beta;  // compute beta
+float GyroMeasDrift = CONST_GMD; // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
+float zeta = CONST_zeta; // compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
 int16_t accel_data[3];
 int16_t gyro_data[3];
 int16_t mag_data[3];
+float calib[3];
+int16_t accelCount[3];  // Stores the 16-bit signed accelerometer sensor output
+int16_t gyroCount[3];   // Stores the 16-bit signed gyro sensor output
+int16_t magCount[3];    // Stores the 16-bit signed magnetometer sensor output
+
+float magCalibration[3] = {0, 0, 0}, magbias[3] = {0, 0, 0};  // Factory mag calibration and mag bias
+float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
+float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values
+int16_t tempCount;   // Stores the real internal chip temperature in degrees Celsius
+float temperature;
+float SelfTest[6];
+float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
+float pitch, yaw, roll;
+float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+#define MAX_FILLER 11
+#define FLOAT_PRECISION 9
+static const long pow10[FLOAT_PRECISION] = {
+    10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+};
+
+static char *long_to_string_with_divisor(char *p,
+                                         long num,
+                                         unsigned radix,
+                                         long divisor) {
+  int i;
+  char *q;
+  long l, ll;
+
+  l = num;
+  if (divisor == 0) {
+    ll = num;
+  } else {
+    ll = divisor;
+  }
+
+  q = p + MAX_FILLER;
+  do {
+    i = (int)(l % radix);
+    i += '0';
+    if (i > '9')
+      i += 'A' - '0' - 10;
+    *--q = i;
+    l /= radix;
+  } while ((ll /= radix) != 0);
+
+  i = (int)(p + MAX_FILLER - q);
+  do
+    *p++ = *q++;
+  while (--i);
+
+  return p;
+}
+
+static char *ftoa(char *p, double num, unsigned long precision) {
+  long l;
+
+  if ((precision == 0) || (precision > FLOAT_PRECISION))
+    precision = FLOAT_PRECISION;
+  precision = pow10[precision - 1];
+
+  l = (long)num;
+  p = long_to_string_with_divisor(p, l, 10, 0);
+  *p++ = '.';
+  l = (long)((num - l) * precision);
+  return long_to_string_with_divisor(p, l, 10, precision / 10);
+}
+
 
 /*
  * GPT14  callback.
@@ -36,9 +108,7 @@ static void gpt14cb(GPTDriver *gptp)
 {
 	(void)gptp;
 	 palToggleLine(LINE_GREEN_LED);
-    mpu_read_accel_data(&accel_data[0]);
-   // mpu_read_gyro_data(&gyro_data[0]);
-   // mpu_read_mag_data(&mag_data[0]);
+
 
     /* perform some function that needs to be done on a regular basis */
   }
@@ -66,7 +136,7 @@ static const SPIConfig spi2_cfg = {
   NULL,
   GPIOC,
   GPIOC_MCU_CS,
-  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0 | SPI_CR1_CPOL | SPI_CR1_CPHA,
+  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
 //  0,
   0
 };
@@ -104,15 +174,46 @@ static THD_FUNCTION(spi1_thread, p){
 
 static THD_WORKING_AREA(spi2_thread_wa, 1024);
 static THD_FUNCTION(spi2_thread, p) {
-
+	char *ptr;
+	float deltat = 0.2f;
   (void)p;
 
   chRegSetThreadName("SPI thread 1");
   while (true) {
-    chThdSleepMilliseconds(300);
-    chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-    									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+    chThdSleepMilliseconds(100);
+    mpu_read_accel_data(&accelCount[0]);
+    mpu_read_gyro_data(&gyroCount[0]);
+    mpu_read_mag_data(&magCount[0]);
 
+    // Now we'll calculate the accleration value into actual g's
+    ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
+    ay = (float)accelCount[1]*aRes - accelBias[1];
+    az = (float)accelCount[2]*aRes - accelBias[2];
+
+    // Calculate the gyro value into actual degrees per second
+    gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
+    gy = (float)gyroCount[1]*gRes - gyroBias[1];
+    gz = (float)gyroCount[2]*gRes - gyroBias[2];
+
+    mx = (float)magCount[0]*mRes*magCalibration[0] - magbias[0];  // get actual magnetometer value, this depends on scale being set
+    my = (float)magCount[1]*mRes*magCalibration[1] - magbias[1];
+    mz = (float)magCount[2]*mRes*magCalibration[2] - magbias[2];
+
+    MahonyQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, my, mx, mz, deltat);
+    yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
+    pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
+    roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+    pitch *= 180.0f / PI;
+    yaw   *= 180.0f / PI;
+    yaw   -= 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
+    roll  *= 180.0f / PI;
+    chThdSleepMilliseconds(100);
+   // ftoa(ptr,ax,5);
+   //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+    //									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+    //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+     //   								(int32_t)ax, (int32_t)ay, (int32_t)az, (int32_t)gx, (int32_t)gy, (int32_t)gz, (int32_t)mx, (int32_t)my, (int32_t)mz);
+    chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r", (int32_t)yaw, (int32_t)pitch, (int32_t)roll);
   }
 }
 
@@ -171,11 +272,19 @@ int main(void) {
     sdStart(&SD1, NULL);
   #endif
 
+    calibrateMPU9250(gyroBias, accelBias);
   	mpu9250_init();
   	chThdSleepMilliseconds(100);
-  	float calib[3];
+
+
+  	getAres(); // Get accelerometer sensitivity
+  	getGres(); // Get gyro sensitivity
+  	getMres(); // Get magnetometer sensitivity
+  	magbias[0] = +470.;  // User environmental x-axis correction in milliGauss, should be automatically calculated
+  	magbias[1] = +120.;  // User environmental x-axis correction in milliGauss
+  	magbias[2] = +125.;  // User environmental x-axis correction in milliGauss
   	initAK8963(&calib[0]);
-  	chprintf((BaseSequentialStream*)&SD1, "Calibrating values: %f, %f, %f\n\r", calib[0], calib[1], calib[2]);
+
   	palToggleLine(LINE_GREEN_LED);
 
   	chThdSleepMilliseconds(1000);
@@ -188,7 +297,7 @@ int main(void) {
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
   chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
- // chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
+  chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
   chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
 
