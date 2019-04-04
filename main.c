@@ -25,6 +25,7 @@
 #include "xbee.h"
 #include "quaternionFilters.h"
 #include "chprintf.h"
+#include "neo-m8.h"
 float PI = CONST_PI;
 float GyroMeasError = CONST_GME; // gyroscope measurement error in rads/s (start at 60 deg/s), then reduce after ~10 s to 3
 float beta = CONST_beta;  // compute beta
@@ -176,15 +177,23 @@ static THD_WORKING_AREA(spi2_thread_wa, 1024);
 static THD_FUNCTION(spi2_thread, p) {
 	char *ptr;
 	float deltat = 0.2f;
+	uint8_t rxbuf[100];
+	int8_t i;
   (void)p;
 
   chRegSetThreadName("SPI thread 1");
   while (true) {
     chThdSleepMilliseconds(100);
-    mpu_read_accel_data(&accelCount[0]);
-    mpu_read_gyro_data(&gyroCount[0]);
-    mpu_read_mag_data(&magCount[0]);
-
+    neo_read_bytes(&SPID2, 99, rxbuf);
+    chprintf((BaseSequentialStream*)&SD1, "SPI: ");
+    for (i = 0; i < 100; i++){
+    	chprintf((BaseSequentialStream*)&SD1, "%c ", rxbuf[i]);
+    }
+    chprintf((BaseSequentialStream*)&SD1, "\n\r");
+    //mpu_read_accel_data(&accelCount[0]);
+    //mpu_read_gyro_data(&gyroCount[0]);
+    //mpu_read_mag_data(&magCount[0]);
+/*
     // Now we'll calculate the accleration value into actual g's
     ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
     ay = (float)accelCount[1]*aRes - accelBias[1];
@@ -207,13 +216,13 @@ static THD_FUNCTION(spi2_thread, p) {
     yaw   *= 180.0f / PI;
     yaw   -= 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
     roll  *= 180.0f / PI;
-    chThdSleepMilliseconds(100);
+    chThdSleepMilliseconds(100); */
    // ftoa(ptr,ax,5);
    //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
     //									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
     //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
      //   								(int32_t)ax, (int32_t)ay, (int32_t)az, (int32_t)gx, (int32_t)gy, (int32_t)gz, (int32_t)mx, (int32_t)my, (int32_t)mz);
-    chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r", (int32_t)yaw, (int32_t)pitch, (int32_t)roll);
+    //chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r", (int32_t)yaw, (int32_t)pitch, (int32_t)roll);
   }
 }
 
@@ -272,8 +281,8 @@ int main(void) {
     sdStart(&SD1, NULL);
   #endif
 
-    calibrateMPU9250(gyroBias, accelBias);
-  	mpu9250_init();
+   // calibrateMPU9250(gyroBias, accelBias);
+  //	mpu9250_init();
   	chThdSleepMilliseconds(100);
 
 
@@ -283,7 +292,7 @@ int main(void) {
   	magbias[0] = +470.;  // User environmental x-axis correction in milliGauss, should be automatically calculated
   	magbias[1] = +120.;  // User environmental x-axis correction in milliGauss
   	magbias[2] = +125.;  // User environmental x-axis correction in milliGauss
-  	initAK8963(&calib[0]);
+  	//initAK8963(&calib[0]);
 
   	palToggleLine(LINE_GREEN_LED);
 
@@ -299,8 +308,9 @@ int main(void) {
   chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
   chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
-  chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
 
+  chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+  neo_switch_to_ubx();
   chThdSleepMilliseconds(1000);
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
