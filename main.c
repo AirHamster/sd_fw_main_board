@@ -48,6 +48,9 @@ float SelfTest[6];
 float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
 float pitch, yaw, roll;
 float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+
+nav_pvt_t pvt;
+nav_pvt_t *pvt_box = &pvt;
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 static const long pow10[FLOAT_PRECISION] = {
@@ -137,8 +140,8 @@ static const SPIConfig spi2_cfg = {
   NULL,
   GPIOC,
   GPIOC_MCU_CS,
-  SPI_CR1_BR_1 | SPI_CR1_BR_0,
-  0,
+  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
+  //0,
   0
 };
 
@@ -178,19 +181,29 @@ static THD_FUNCTION(spi2_thread, p) {
 	char *ptr;
 	float deltat = 0.2f;
 	uint8_t rxbuf[200];
-	uint8_t i;
+
   (void)p;
 
   chRegSetThreadName("SPI thread 1");
   while (true) {
-    chThdSleepMilliseconds(200);
-  //  neo_poll_prt();
-    neo_read_bytes(&SPID2, 200, rxbuf);
-    chprintf((BaseSequentialStream*)&SD1, "SPI: ");
-    for (i = 0; i < 200; i++){
-    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
-    }
-    chprintf((BaseSequentialStream*)&SD1, "\n\r");
+    chThdSleepMilliseconds(500);
+    //neo_poll_nav_pvt()();
+    neo_poll_nav_pvt();
+    chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
+    chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
+    chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
+    chprintf((BaseSequentialStream*)&SD1, "HOUR: %d\n\r", pvt_box->hour);
+    chprintf((BaseSequentialStream*)&SD1, "MIN:  %d\n\r", pvt_box->min);
+    chprintf((BaseSequentialStream*)&SD1, "SEC:  %d\n\r", pvt_box->sec);
+    chprintf((BaseSequentialStream*)&SD1, "LONG: %d\n\r", pvt_box->lon);
+    chprintf((BaseSequentialStream*)&SD1, "LATT: %d\n\r", pvt_box->lat);
+    chprintf((BaseSequentialStream*)&SD1, "VAL:  %x\n\r", pvt_box->valid);
+    chprintf((BaseSequentialStream*)&SD1, "FIXT:  %d\n\r", pvt_box->fixType);
+    chprintf((BaseSequentialStream*)&SD1, "SV:   %d\n\r", pvt_box->numSV);
+    chprintf((BaseSequentialStream*)&SD1, "SPD:  %d\n\r", pvt_box->gSpeed);
+    chprintf((BaseSequentialStream*)&SD1, "\n\n\r");
+    //neo_read_bytes(&SPID2, 200, rxbuf);
+
     //mpu_read_accel_data(&accelCount[0]);
     //mpu_read_gyro_data(&gyroCount[0]);
     //mpu_read_mag_data(&magCount[0]);
@@ -297,10 +310,10 @@ int main(void) {
 
   	palToggleLine(LINE_GREEN_LED);
 
-  	chThdSleepMilliseconds(1000);
     // set up the timer
     gptStart(&GPTD14, &gpt14cfg);
-
+    neo_switch_to_ubx();
+      chThdSleepMilliseconds(1000);
 
   /*
    * Creates threads.
@@ -311,7 +324,7 @@ int main(void) {
 
 
   chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
-  neo_switch_to_ubx();
+  //neo_switch_to_ubx();
   chThdSleepMilliseconds(1000);
   neo_set_pvt_1hz();
   // configure the timer to fire after 25 timer clock tics
