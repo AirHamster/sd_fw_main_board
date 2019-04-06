@@ -127,7 +127,7 @@ static const SPIConfig spi1_cfg = {
   NULL,
   GPIOA,
   GPIOA_RF_868_CS,
-  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
+  SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
 //  0,
   0
 };
@@ -137,8 +137,8 @@ static const SPIConfig spi2_cfg = {
   NULL,
   GPIOC,
   GPIOC_MCU_CS,
-  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
-//  0,
+  SPI_CR1_BR_1 | SPI_CR1_BR_0,
+  0,
   0
 };
 
@@ -177,17 +177,18 @@ static THD_WORKING_AREA(spi2_thread_wa, 1024);
 static THD_FUNCTION(spi2_thread, p) {
 	char *ptr;
 	float deltat = 0.2f;
-	uint8_t rxbuf[100];
-	int8_t i;
+	uint8_t rxbuf[200];
+	uint8_t i;
   (void)p;
 
   chRegSetThreadName("SPI thread 1");
   while (true) {
-    chThdSleepMilliseconds(100);
-    neo_read_bytes(&SPID2, 99, rxbuf);
+    chThdSleepMilliseconds(200);
+  //  neo_poll_prt();
+    neo_read_bytes(&SPID2, 200, rxbuf);
     chprintf((BaseSequentialStream*)&SD1, "SPI: ");
-    for (i = 0; i < 100; i++){
-    	chprintf((BaseSequentialStream*)&SD1, "%c ", rxbuf[i]);
+    for (i = 0; i < 200; i++){
+    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
     }
     chprintf((BaseSequentialStream*)&SD1, "\n\r");
     //mpu_read_accel_data(&accelCount[0]);
@@ -312,6 +313,7 @@ int main(void) {
   chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
   neo_switch_to_ubx();
   chThdSleepMilliseconds(1000);
+  neo_set_pvt_1hz();
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
     //   so 200,000 / 25 = 8,000Hz
