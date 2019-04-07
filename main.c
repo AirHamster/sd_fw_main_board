@@ -155,11 +155,12 @@ static const SPIConfig spi2_cfg = {
 static THD_WORKING_AREA(spi1_thread_wa, 512);
 static THD_FUNCTION(spi1_thread, p){
 	(void)p;
-	uint8_t at[] = {'N', 'V'};
+	uint8_t i;
+	uint8_t at[] = {'S', 'L'};
 	uint8_t at2[9];
-	uint8_t rxbuf[2];
-	char *p1 = "SR";
-	char *p2 = "NV";
+	uint8_t rxbuf[15];
+	char *p1 = "SH";
+	char *p2 = "SL";
 	char *argv[2];
 	argv[0] = p1;
 	argv[1] = p2;
@@ -167,9 +168,15 @@ static THD_FUNCTION(spi1_thread, p){
 	while(true){
 		at2[9] = '\0';
 		palSetLine(LINE_RED_LED);
-	//	xbee_read(&SPID1, 2, argv);
-	//	xbee_create_at_read_message(at, at2);
+		xbee_create_at_read_message(at, at2);
+		xbee_read(&SPID1, 8+6, at, rxbuf);
 		palClearLine(LINE_RED_LED);
+		rxbuf[14] = '\0';
+		chprintf((BaseSequentialStream*)&SD1, "SH ");
+			    for (i = 0; i < 15; i++){
+			    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
+			    }
+			    chprintf((BaseSequentialStream*)&SD1, "\n\r");
 		chThdSleepMilliseconds(1000);
 
 	}
@@ -189,7 +196,7 @@ static THD_FUNCTION(spi2_thread, p) {
     chThdSleepMilliseconds(500);
     //neo_poll_nav_pvt()();
     neo_poll_nav_pvt();
-    chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
+   /* chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
     chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
     chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
     chprintf((BaseSequentialStream*)&SD1, "HOUR: %d\n\r", pvt_box->hour);
@@ -202,8 +209,7 @@ static THD_FUNCTION(spi2_thread, p) {
     chprintf((BaseSequentialStream*)&SD1, "SV:   %d\n\r", pvt_box->numSV);
     chprintf((BaseSequentialStream*)&SD1, "SPD:  %d\n\r", pvt_box->gSpeed);
     chprintf((BaseSequentialStream*)&SD1, "\n\n\r");
-    //neo_read_bytes(&SPID2, 200, rxbuf);
-
+*/
     //mpu_read_accel_data(&accelCount[0]);
     //mpu_read_gyro_data(&gyroCount[0]);
     //mpu_read_mag_data(&magCount[0]);
