@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-
+#include <stdlib.h>
 #include "ch.h"
 #include "hal.h"
 #include "rt_test_root.h"
@@ -104,7 +104,11 @@ static char *ftoa(char *p, double num, unsigned long precision) {
   return long_to_string_with_divisor(p, l, 10, precision / 10);
 }
 
-
+void insert_dot(char *str){
+	uint8_t len = strlen(str);
+	memmove(&str[len-6], &str[len-7], len-2);
+	str[len-7] = '.';
+}
 /*
  * GPT14  callback.
  */
@@ -188,26 +192,57 @@ static THD_FUNCTION(spi2_thread, p) {
 	char *ptr;
 	float deltat = 0.2f;
 	uint8_t rxbuf[200];
-
+	int32_t spdi = 0;
+	char lon[20];
+	char lat[20];
+	double spd;
   (void)p;
 
   chRegSetThreadName("SPI thread 1");
   while (true) {
     chThdSleepMilliseconds(500);
+    //chprintf((BaseSequentialStream*)&SD1, "thd2\n\r");
+    memset(lon, '\0',20);
+   	memset(lat, '\0',20);
+
     //neo_poll_nav_pvt()();
     neo_poll_nav_pvt();
-   /* chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
+    //chprintf((BaseSequentialStream*)&SD1, "thd2_2\n\r");
+    itoa(pvt_box->lat, lat, 10);
+    itoa(pvt_box->lon, lon, 10);
+    insert_dot(lat);
+    insert_dot(lon);
+  //  spd = (float)(pvt_box->gSpeed * 0.0036);
+  //  spdi = (int32_t)(spd);
+
+    //chprintf((BaseSequentialStream*)&SD1, "thd2_3\n\r");
+    chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
+    chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
+    //chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
+    //chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
+    //chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
+    chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->hour);
+    chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->min);
+    chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->sec);
+
+    //chprintf((BaseSequentialStream*)&SD1, "VAL:  %x\n\r", pvt_box->valid);
+    //chprintf((BaseSequentialStream*)&SD1, "FIXT:  %d\n\r", pvt_box->fixType);
+    chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
+    chprintf((BaseSequentialStream*)&SD1, "%d", pvt_box->gSpeed);
+    chprintf((BaseSequentialStream*)&SD1, "\r\n");
+        /*
+    chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
     chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
     chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
     chprintf((BaseSequentialStream*)&SD1, "HOUR: %d\n\r", pvt_box->hour);
     chprintf((BaseSequentialStream*)&SD1, "MIN:  %d\n\r", pvt_box->min);
     chprintf((BaseSequentialStream*)&SD1, "SEC:  %d\n\r", pvt_box->sec);
-    chprintf((BaseSequentialStream*)&SD1, "LONG: %d\n\r", pvt_box->lon);
-    chprintf((BaseSequentialStream*)&SD1, "LATT: %d\n\r", pvt_box->lat);
+    chprintf((BaseSequentialStream*)&SD1, "LONG: %s\n\r", lon);
+    chprintf((BaseSequentialStream*)&SD1, "LATT: %s\n\r", lat);
     chprintf((BaseSequentialStream*)&SD1, "VAL:  %x\n\r", pvt_box->valid);
     chprintf((BaseSequentialStream*)&SD1, "FIXT:  %d\n\r", pvt_box->fixType);
     chprintf((BaseSequentialStream*)&SD1, "SV:   %d\n\r", pvt_box->numSV);
-    chprintf((BaseSequentialStream*)&SD1, "SPD:  %d\n\r", pvt_box->gSpeed);
+    chprintf((BaseSequentialStream*)&SD1, "SPD:  %d\n\r", spdi);
     chprintf((BaseSequentialStream*)&SD1, "\n\n\r");
 */
     //mpu_read_accel_data(&accelCount[0]);
@@ -317,22 +352,24 @@ int main(void) {
   	palToggleLine(LINE_GREEN_LED);
 
     // set up the timer
-    gptStart(&GPTD14, &gpt14cfg);
+//    gptStart(&GPTD14, &gpt14cfg);
     neo_switch_to_ubx();
       chThdSleepMilliseconds(1000);
-
+      neo_set_pvt_1hz();
   /*
    * Creates threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-  chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
+  //chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
   chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
 
-  chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+
   //neo_switch_to_ubx();
+
+
+  chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
   chThdSleepMilliseconds(1000);
-  neo_set_pvt_1hz();
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
     //   so 200,000 / 25 = 8,000Hz
