@@ -106,8 +106,14 @@ static char *ftoa(char *p, double num, unsigned long precision) {
 
 void insert_dot(char *str){
 	uint8_t len = strlen(str);
-	memmove(&str[len-6], &str[len-7], len-2);
-	str[len-7] = '.';
+	uint8_t str2[20];
+	str2[0] = str[0];
+	str2[1] = str[1];
+	str2[2] = '.';
+	memcpy(&str2[3], &str[2], 7);
+	memcpy(str, str2, 8);
+	//memmove(&str[len-6], &str[len-7], len-2);
+	//str[len-7] = '.';
 }
 /*
  * GPT14  callback.
@@ -176,11 +182,11 @@ static THD_FUNCTION(spi1_thread, p){
 		xbee_read(&SPID1, 8+6, at, rxbuf);
 		palClearLine(LINE_RED_LED);
 		rxbuf[14] = '\0';
-		chprintf((BaseSequentialStream*)&SD1, "SH ");
+	/*	chprintf((BaseSequentialStream*)&SD1, "SH ");
 			    for (i = 0; i < 15; i++){
 			    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
 			    }
-			    chprintf((BaseSequentialStream*)&SD1, "\n\r");
+			    chprintf((BaseSequentialStream*)&SD1, "\n\r"); */
 		chThdSleepMilliseconds(1000);
 
 	}
@@ -205,32 +211,26 @@ static THD_FUNCTION(spi2_thread, p) {
     memset(lon, '\0',20);
    	memset(lat, '\0',20);
 
-    //neo_poll_nav_pvt()();
     neo_poll_nav_pvt();
     //chprintf((BaseSequentialStream*)&SD1, "thd2_2\n\r");
     itoa(pvt_box->lat, lat, 10);
     itoa(pvt_box->lon, lon, 10);
     insert_dot(lat);
     insert_dot(lon);
-  //  spd = (float)(pvt_box->gSpeed * 0.0036);
-  //  spdi = (int32_t)(spd);
+    spd = (float)(pvt_box->gSpeed * 0.0036);
+    spdi = (int32_t)(spd);
 
-    //chprintf((BaseSequentialStream*)&SD1, "thd2_3\n\r");
+
     chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
     chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
-    //chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
-    //chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
-    //chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
     chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->hour);
     chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->min);
     chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->sec);
-
-    //chprintf((BaseSequentialStream*)&SD1, "VAL:  %x\n\r", pvt_box->valid);
-    //chprintf((BaseSequentialStream*)&SD1, "FIXT:  %d\n\r", pvt_box->fixType);
     chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
-    chprintf((BaseSequentialStream*)&SD1, "%d", pvt_box->gSpeed);
+    chprintf((BaseSequentialStream*)&SD1, "%d",  spdi);
     chprintf((BaseSequentialStream*)&SD1, "\r\n");
-        /*
+
+    /*
     chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
     chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
     chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
@@ -334,6 +334,7 @@ int main(void) {
     shellInit();
   #else
     sdStart(&SD1, NULL);
+    //shellInit();
   #endif
 
    // calibrateMPU9250(gyroBias, accelBias);
@@ -360,7 +361,7 @@ int main(void) {
    * Creates threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-  //chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
+  chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
   chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
 
@@ -368,7 +369,7 @@ int main(void) {
   //neo_switch_to_ubx();
 
 
-  chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+  //chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
   chThdSleepMilliseconds(1000);
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
@@ -379,8 +380,8 @@ int main(void) {
    * sleeping in a loop and check the button state.
    */
   while (true) {
-	//  thread_t *shelltp = cmd_init();
-	//        chThdWait(shelltp);               /* Waiting termination.             */
+	  thread_t *shelltp = cmd_init();
+	      chThdWait(shelltp);               /* Waiting termination.*/
 	  chThdSleepMilliseconds(5000);
 
   }
