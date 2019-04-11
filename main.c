@@ -211,7 +211,8 @@ static THD_FUNCTION(spi2_thread, p) {
     memset(lon, '\0',20);
    	memset(lat, '\0',20);
 
-    neo_poll_nav_pvt();
+   	neo_poll();
+    //neo_poll_nav_pvt();
     //chprintf((BaseSequentialStream*)&SD1, "thd2_2\n\r");
     itoa(pvt_box->lat, lat, 10);
     itoa(pvt_box->lon, lon, 10);
