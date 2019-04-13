@@ -51,58 +51,15 @@ float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 
 nav_pvt_t pvt;
 nav_pvt_t *pvt_box = &pvt;
+xbee_struct_t xbee_struct;
+xbee_struct_t *xbee = &xbee_struct;
+
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 static const long pow10[FLOAT_PRECISION] = {
     10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
 };
 
-static char *long_to_string_with_divisor(char *p,
-                                         long num,
-                                         unsigned radix,
-                                         long divisor) {
-  int i;
-  char *q;
-  long l, ll;
-
-  l = num;
-  if (divisor == 0) {
-    ll = num;
-  } else {
-    ll = divisor;
-  }
-
-  q = p + MAX_FILLER;
-  do {
-    i = (int)(l % radix);
-    i += '0';
-    if (i > '9')
-      i += 'A' - '0' - 10;
-    *--q = i;
-    l /= radix;
-  } while ((ll /= radix) != 0);
-
-  i = (int)(p + MAX_FILLER - q);
-  do
-    *p++ = *q++;
-  while (--i);
-
-  return p;
-}
-
-static char *ftoa(char *p, double num, unsigned long precision) {
-  long l;
-
-  if ((precision == 0) || (precision > FLOAT_PRECISION))
-    precision = FLOAT_PRECISION;
-  precision = pow10[precision - 1];
-
-  l = (long)num;
-  p = long_to_string_with_divisor(p, l, 10, 0);
-  *p++ = '.';
-  l = (long)((num - l) * precision);
-  return long_to_string_with_divisor(p, l, 10, precision / 10);
-}
 
 void insert_dot(char *str){
 	uint8_t len = strlen(str);
@@ -112,9 +69,8 @@ void insert_dot(char *str){
 	str2[2] = '.';
 	memcpy(&str2[3], &str[2], 7);
 	memcpy(str, str2, 8);
-	//memmove(&str[len-6], &str[len-7], len-2);
-	//str[len-7] = '.';
 }
+
 /*
  * GPT14  callback.
  */
@@ -125,7 +81,7 @@ static void gpt14cb(GPTDriver *gptp)
 
 
     /* perform some function that needs to be done on a regular basis */
-  }
+}
 
 static GPTConfig gpt14cfg =
 {
@@ -155,7 +111,55 @@ static const SPIConfig spi2_cfg = {
   0
 };
 
+thread_reference_t trp = NULL;
 
+static THD_WORKING_AREA(xbee_thread_wa, 128);
+static THD_FUNCTION(xbee_thread, p){
+	(void)p;
+	msg_t msg;
+    uint8_t at[] = {'S', 'L'};
+    uint8_t rxbuf[15];
+	 while (true) {
+
+		chSysLock();
+		   if (xbee->suspend_state) {
+		       	msg = chThdSuspendS(&trp);
+		    }
+		chSysUnlock();
+
+	    /* Perform processing here.*/
+	    chprintf((BaseSequentialStream*)&SD1, "thd_xbee\n\r");
+	    switch (msg){
+	    case XBEE_GET_OWN_ADDR:
+	    	xbee_read_own_addr(xbee);
+ 		    break;
+	    case XBEE_GET_RSSI:
+	    	xbee->rssi = xbee_read_last_rssi(xbee);
+	    	chprintf((BaseSequentialStream*)&SD1, "RSSI: %d\r\n", xbee->rssi);
+	    	break;
+	    case XBEE_GET_PACKET_PAYLOAD:
+	    	xbee->packet_payload = xbee_get_packet_payload(xbee);
+	    	chprintf((BaseSequentialStream*)&SD1, "Packet payload: %d\r\n", xbee->packet_payload);
+	    	break;
+	    case XBEE_GET_STAT:
+	    	xbee->bytes_transmitted = xbee_get_bytes_transmitted(xbee);
+	    	xbee->good_packs_res = xbee_get_good_packets_res(xbee);
+	    	xbee->rec_err_count = xbee_get_received_err_count(xbee);
+	    	xbee->trans_errs = xbee_get_transceived_err_count(xbee);
+	    	xbee->unicast_trans_count = xbee_get_unicast_trans_count(xbee);
+	    	xbee->rssi = xbee_read_last_rssi(xbee);
+	    	chprintf((BaseSequentialStream*)&SD1, "Bytes transmitted:     %d\r\n", xbee->bytes_transmitted);
+	    	chprintf((BaseSequentialStream*)&SD1, "Good packets received: %d\r\n", xbee->good_packs_res);
+	    	chprintf((BaseSequentialStream*)&SD1, "Received errors count: %d\r\n", xbee->rec_err_count);
+	    	chprintf((BaseSequentialStream*)&SD1, "Transceiver errors:    %d\r\n", xbee->trans_errs);
+	    	chprintf((BaseSequentialStream*)&SD1, "Unicast transmittions: %d\r\n", xbee->unicast_trans_count);
+	    	chprintf((BaseSequentialStream*)&SD1, "RSSI:                  %d\r\n", xbee->rssi);
+	    	break;
+	    }
+
+	    xbee->suspend_state = 1;
+  }
+}
 
 /*
  * This is a thread that serve SPI1 bus with Xbee module
@@ -166,29 +170,10 @@ static THD_WORKING_AREA(spi1_thread_wa, 512);
 static THD_FUNCTION(spi1_thread, p){
 	(void)p;
 	uint8_t i;
-	uint8_t at[] = {'S', 'L'};
-	uint8_t at2[9];
-	uint8_t rxbuf[15];
-	char *p1 = "SH";
-	char *p2 = "SL";
-	char *argv[2];
-	argv[0] = p1;
-	argv[1] = p2;
+
 	chRegSetThreadName("spi1_thread");
 	while(true){
-		at2[9] = '\0';
-		palSetLine(LINE_RED_LED);
-		xbee_create_at_read_message(at, at2);
-		xbee_read(&SPID1, 8+6, at, rxbuf);
-		palClearLine(LINE_RED_LED);
-		rxbuf[14] = '\0';
-	/*	chprintf((BaseSequentialStream*)&SD1, "SH ");
-			    for (i = 0; i < 15; i++){
-			    	chprintf((BaseSequentialStream*)&SD1, "%x ", rxbuf[i]);
-			    }
-			    chprintf((BaseSequentialStream*)&SD1, "\n\r"); */
 		chThdSleepMilliseconds(1000);
-
 	}
 }
 
@@ -220,7 +205,7 @@ static THD_FUNCTION(spi2_thread, p) {
     insert_dot(lon);
     spd = (float)(pvt_box->gSpeed * 0.0036);
     spdi = (int32_t)(spd);
-
+/*
 
     chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
     chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
@@ -230,7 +215,7 @@ static THD_FUNCTION(spi2_thread, p) {
     chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
     chprintf((BaseSequentialStream*)&SD1, "%d",  spdi);
     chprintf((BaseSequentialStream*)&SD1, "\r\n");
-
+*/
     /*
     chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
     chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
@@ -324,7 +309,7 @@ int main(void) {
   spiStart(&SPID1, &spi1_cfg);
   spiStart(&SPID2, &spi2_cfg);
 
-
+  xbee->suspend_state = 1;
 
   /*
      * Shell manager initialization.
@@ -362,8 +347,12 @@ int main(void) {
    * Creates threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+  chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
   chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
   chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
+
+
+  xbee_thread_execute(XBEE_GET_OWN_ADDR);
 
 
 
@@ -372,6 +361,8 @@ int main(void) {
 
   //chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
   chThdSleepMilliseconds(1000);
+  xbee_thread_execute(XBEE_GET_PACKET_PAYLOAD);
+
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
     //   so 200,000 / 25 = 8,000Hz
