@@ -53,16 +53,16 @@ nav_pvt_t pvt;
 nav_pvt_t *pvt_box = &pvt;
 xbee_struct_t xbee_struct;
 xbee_struct_t *xbee = &xbee_struct;
-
+neo_struct_t neo_struct;
+neo_struct_t *neo = &neo_struct;
+mpu_struct_t mpu_struct;
+mpu_struct_t *mpu = &mpu_struct;
+output_struct_t output_struct;
+output_struct_t *output = &output_struct;
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
-static const long pow10[FLOAT_PRECISION] = {
-    10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
-};
-
 
 void insert_dot(char *str){
-	uint8_t len = strlen(str);
 	uint8_t str2[20];
 	str2[0] = str[0];
 	str2[1] = str[1];
@@ -71,23 +71,9 @@ void insert_dot(char *str){
 	memcpy(str, str2, 8);
 }
 
-/*
- * GPT14  callback.
- */
-static void gpt14cb(GPTDriver *gptp)
-{
-	(void)gptp;
-	 palToggleLine(LINE_GREEN_LED);
 
 
-    /* perform some function that needs to be done on a regular basis */
-}
 
-static GPTConfig gpt14cfg =
-{
-  20000,      // Timer clock
-  gpt14cb        // Callback function
-};
 /*
  * Maximum speed SPI configuration (3.3MHz, CPHA=0, CPOL=0, MSb first).
  */
@@ -111,7 +97,7 @@ static const SPIConfig spi2_cfg = {
   0
 };
 
-thread_reference_t trp = NULL;
+thread_reference_t xbee_trp = NULL;
 
 static THD_WORKING_AREA(xbee_thread_wa, 128);
 static THD_FUNCTION(xbee_thread, p){
@@ -123,7 +109,7 @@ static THD_FUNCTION(xbee_thread, p){
 
 		chSysLock();
 		   if (xbee->suspend_state) {
-		       	msg = chThdSuspendS(&trp);
+		       	msg = chThdSuspendS(&xbee_trp);
 		    }
 		chSysUnlock();
 
@@ -267,7 +253,96 @@ static THD_FUNCTION(spi2_thread, p) {
   }
 }
 
+/*
+ * Thread to process data collection and filtering from MPU9250
+ */
+thread_reference_t mpu_trp = NULL;
+static THD_WORKING_AREA(mpu_thread_wa, 512);
+static THD_FUNCTION(mpu_thread, arg) {
 
+  (void)arg;
+  msg_t msg;
+  chRegSetThreadName("MPU9250 Thread");
+  while (true) {
+	  chSysLock();
+	  		   if (mpu->suspend_state) {
+	  		       	msg = chThdSuspendS(&mpu_trp);
+	  		    }
+	  		chSysUnlock();
+  }
+}
+
+/*
+ * Thread to process data collection and filtering from UBLOX NEO-M8P
+ */
+thread_reference_t gps_trp = NULL;
+static THD_WORKING_AREA(gps_thread_wa, 512);
+static THD_FUNCTION(gps_thread, arg) {
+
+  (void)arg;
+  msg_t msg;
+  chRegSetThreadName("NEO-M8P Thread");
+  while (true) {
+	  chSysLock();
+	  		   if (neo->suspend_state) {
+	  		       	msg = chThdSuspendS(&gps_trp);
+	  		    }
+	  		chSysUnlock();
+  }
+}
+
+/*
+ * Thread that outputs debug data which is needed
+ */
+thread_reference_t output_trp = NULL;
+static THD_WORKING_AREA(output_thread_wa, 1024);
+static THD_FUNCTION(output_thread, arg) {
+
+  (void)arg;
+  msg_t msg;
+  chRegSetThreadName("Data output Thread");
+  while (true) {
+	  chSysLock();
+	  		   if (output->suspend_state) {
+	  		       	msg = chThdSuspendS(&output_trp);
+	  		    }
+	  		chSysUnlock();
+	  		//chprintf((BaseSequentialStream*)&SD1, "output is %d\n\r", output->test);
+	  if (output->test){
+		  chprintf((BaseSequentialStream*)&SD1, "Test output\n\r");
+	  }else{
+		  if (output->gps){
+		  chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
+	  }else if (output->ypr){
+		  chprintf((BaseSequentialStream*)&SD1, "YPR output\n\r");
+	  }else if (output->gyro){
+		  chprintf((BaseSequentialStream*)&SD1, "GYRO output\n\r");
+	  }
+  }
+	  output->suspend_state = 1;
+	  palToggleLine(LINE_GREEN_LED);
+  }
+}
+
+
+/*
+ * GPT14  callback.
+ */
+static void gpt14cb(GPTDriver *gptp)
+{
+	(void)gptp;
+
+	chSysLockFromISR();
+	chThdResumeI(&output_trp, (msg_t)0x1137);  /* Resuming the thread with message.*/
+	chSysUnlockFromISR();
+}
+static GPTConfig gpt14cfg =
+{
+  20000,      // Timer clock
+  gpt14cb,        // Callback function
+  0,
+  0
+};
 /*
  * This is a periodic thread that does absolutely nothing except flashing
  * a LED.
@@ -320,7 +395,6 @@ int main(void) {
     shellInit();
   #else
     sdStart(&SD1, NULL);
-    //shellInit();
   #endif
 
    // calibrateMPU9250(gyroBias, accelBias);
@@ -336,37 +410,39 @@ int main(void) {
   	magbias[2] = +125.;  // User environmental x-axis correction in milliGauss
   	//initAK8963(&calib[0]);
 
-  	palToggleLine(LINE_GREEN_LED);
 
-    // set up the timer
-//    gptStart(&GPTD14, &gpt14cfg);
+  	output->suspend_state = 1;
+    xbee->suspend_state = 1;
+    neo->suspend_state = 1;
+    mpu->suspend_state = 1;
+  	// set up the timer
+    gptStart(&GPTD14, &gpt14cfg);
     neo_switch_to_ubx();
-      chThdSleepMilliseconds(1000);
-      neo_set_pvt_1hz();
+    chThdSleepMilliseconds(1000);
+    neo_set_pvt_1hz();
   /*
    * Creates threads.
    */
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
   chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
+  chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 1, mpu_thread, NULL);
+  chThdCreateStatic(gps_thread_wa, sizeof(gps_thread_wa), NORMALPRIO + 1, gps_thread, NULL);
+  chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 1, output_thread, NULL);
   chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
   chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
-
+  palToggleLine(LINE_GREEN_LED);
   xbee_thread_execute(XBEE_GET_OWN_ADDR);
 
 
-
-  //neo_switch_to_ubx();
-
-
-  //chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+//chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
   chThdSleepMilliseconds(1000);
   xbee_thread_execute(XBEE_GET_PACKET_PAYLOAD);
 
   // configure the timer to fire after 25 timer clock tics
     //   The clock is running at 200,000Hz, so each tick is 50uS,
     //   so 200,000 / 25 = 8,000Hz
-   // gptStartContinuous(&GPTD14, 20000);
+    gptStartContinuous(&GPTD14, 5000);
   /*
    * Normal main() thread activity, in this demo it does nothing except
    * sleeping in a loop and check the button state.
