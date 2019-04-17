@@ -12,7 +12,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 #include <stdlib.h>
 #include "ch.h"
 #include "hal.h"
@@ -23,44 +23,25 @@
 #include "MPU9250.h"
 #include "sd_shell_cmds.h"
 #include "xbee.h"
-#include "quaternionFilters.h"
+
 #include "chprintf.h"
 #include "neo-m8.h"
-float PI = CONST_PI;
-float GyroMeasError = CONST_GME; // gyroscope measurement error in rads/s (start at 60 deg/s), then reduce after ~10 s to 3
-float beta = CONST_beta;  // compute beta
-float GyroMeasDrift = CONST_GMD; // gyroscope measurement drift in rad/s/s (start at 0.0 deg/s/s)
-float zeta = CONST_zeta; // compute zeta, the other free parameter in the Madgwick scheme usually set to a small or zero value
-int16_t accel_data[3];
-int16_t gyro_data[3];
-int16_t mag_data[3];
-float calib[3];
-int16_t accelCount[3];  // Stores the 16-bit signed accelerometer sensor output
-int16_t gyroCount[3];   // Stores the 16-bit signed gyro sensor output
-int16_t magCount[3];    // Stores the 16-bit signed magnetometer sensor output
 
-float magCalibration[3] = {0, 0, 0}, magbias[3] = {0, 0, 0};  // Factory mag calibration and mag bias
-float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
-float ax, ay, az, gx, gy, gz, mx, my, mz; // variables to hold latest sensor data values
-int16_t tempCount;   // Stores the real internal chip temperature in degrees Celsius
-float temperature;
-float SelfTest[6];
-float aRes, gRes, mRes;      // scale resolutions per LSB for the sensors
-float pitch, yaw, roll;
-float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 
-nav_pvt_t pvt;
-nav_pvt_t *pvt_box = &pvt;
-xbee_struct_t xbee_struct;
-xbee_struct_t *xbee = &xbee_struct;
-neo_struct_t neo_struct;
-neo_struct_t *neo = &neo_struct;
-mpu_struct_t mpu_struct;
-mpu_struct_t *mpu = &mpu_struct;
-output_struct_t output_struct;
-output_struct_t *output = &output_struct;
+uint8_t payload[256];
+extern ubx_nav_pvt_t *pvt_box;
+extern ubx_cfg_rate_t *rate_box;
+extern ubx_cfg_nav5_t *nav5_box;
+extern xbee_struct_t *xbee;
+extern neo_struct_t *neo;
+extern mpu_struct_t *mpu;
+extern output_struct_t *output;
+struct ch_semaphore usart1_semaph;
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
+
+static void gpt12cb(GPTDriver *gptp);
+static void gpt14cb(GPTDriver *gptp);
 
 void insert_dot(char *str){
 	uint8_t str2[20];
@@ -73,29 +54,99 @@ void insert_dot(char *str){
 
 
 
+static GPTConfig gpt14cfg =
+{
+		20000,      // Timer clock
+		gpt14cb,        // Callback function
+		0,
+		0
+};
+
+static GPTConfig gpt12cfg =
+{
+		20000,      // Timer clock
+		gpt12cb,        // Callback function
+		0,
+		0
+};
 
 /*
  * Maximum speed SPI configuration (3.3MHz, CPHA=0, CPOL=0, MSb first).
  */
 static const SPIConfig spi1_cfg = {
-  false,
-  NULL,
-  GPIOA,
-  GPIOA_RF_868_CS,
-  SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
-//  0,
-  0
+		false,
+		NULL,
+		GPIOA,
+		GPIOA_RF_868_CS,
+		SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
+		//  0,
+		0
 };
 
 static const SPIConfig spi2_cfg = {
-  false,
-  NULL,
-  GPIOC,
-  GPIOC_MCU_CS,
-  SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
-  //0,
-  0
+		false,
+		NULL,
+		GPIOC,
+		GPIOC_MCU_CS,
+		SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
+		//0,
+		0
 };
+
+
+thread_reference_t xbee_poll_trp = NULL;
+
+static THD_WORKING_AREA(xbee_poll_thread_wa, 128);
+static THD_FUNCTION(xbee_poll_thread, p){
+	uint8_t len, i;
+	uint8_t txbuff[20];
+	uint8_t rxbuff[20];
+	uint8_t megabuff[256+24];	//Max payload lenth + headers etc
+	uint8_t crc;
+	msg_t msg;
+	chRegSetThreadName("XBee polling thd");
+	memset(megabuff, 0x00, 256+24);
+	memset(txbuff, 0x00, 20);
+	while (true){
+		chSysLock();
+		if (xbee->poll_suspend_state) {
+			msg = chThdSuspendS(&xbee_poll_trp);
+		}
+		chSysUnlock();
+		palToggleLine(LINE_RED_LED);
+		for (i = 0; i < 30; i++){
+			xbee_read_no_cs(&SPID1, 1, &rxbuff[0]);
+			if ( rxbuff[0] == 0x7E ){
+				xbee_read_no_cs(&SPID1, 2, &rxbuff[1]);
+				len = (rxbuff[1] << 8) | rxbuff[2];
+				megabuff[0] = rxbuff[0];
+				megabuff[1] = rxbuff[1];
+				megabuff[2] = rxbuff[2];
+				xbee_send(&SPID1, &megabuff[3], len + 1);	//len + CRC
+				i = 30;
+				crc = xbee_calc_CRC(&megabuff[3], len);
+				if (crc == megabuff[3+len]){
+					switch (megabuff[3]){
+
+					case XBEE_AT_RESPONSE_FRAME:
+						xbee_process_at_response(megabuff);
+						break;
+					case XBEE_TRANSMIT_STAT_FRAME:
+						xbee_process_tx_stat(megabuff);
+						break;
+					case XBEE_RECEIVE_PACKET_FRAME:
+						xbee_process_recieve(megabuff);
+						break;
+					case XBEE_NODE_ID_FRAME:
+						xbee_process_node_id(megabuff);
+						break;
+					}
+				}
+
+			}
+		}
+	}
+}
 
 thread_reference_t xbee_trp = NULL;
 
@@ -103,95 +154,81 @@ static THD_WORKING_AREA(xbee_thread_wa, 128);
 static THD_FUNCTION(xbee_thread, p){
 	(void)p;
 	msg_t msg;
-    uint8_t at[] = {'S', 'L'};
-    uint8_t rxbuf[15];
-	 while (true) {
-
+	uint8_t at[] = {'S', 'L'};
+	uint8_t rxbuf[15];
+	chRegSetThreadName("XBee Thread");
+	while (true) {
 		chSysLock();
-		   if (xbee->suspend_state) {
-		       	msg = chThdSuspendS(&xbee_trp);
-		    }
+		if (xbee->suspend_state) {
+			msg = chThdSuspendS(&xbee_trp);
+		}
 		chSysUnlock();
 
-	    /* Perform processing here.*/
-	    chprintf((BaseSequentialStream*)&SD1, "thd_xbee\n\r");
-	    switch (msg){
-	    case XBEE_GET_OWN_ADDR:
-	    	xbee_read_own_addr(xbee);
- 		    break;
-	    case XBEE_GET_RSSI:
-	    	xbee->rssi = xbee_read_last_rssi(xbee);
-	    	chprintf((BaseSequentialStream*)&SD1, "RSSI: %d\r\n", xbee->rssi);
-	    	break;
-	    case XBEE_GET_PACKET_PAYLOAD:
-	    	xbee->packet_payload = xbee_get_packet_payload(xbee);
-	    	chprintf((BaseSequentialStream*)&SD1, "Packet payload: %d\r\n", xbee->packet_payload);
-	    	break;
-	    case XBEE_GET_STAT:
-	    	xbee->bytes_transmitted = xbee_get_bytes_transmitted(xbee);
-	    	xbee->good_packs_res = xbee_get_good_packets_res(xbee);
-	    	xbee->rec_err_count = xbee_get_received_err_count(xbee);
-	    	xbee->trans_errs = xbee_get_transceived_err_count(xbee);
-	    	xbee->unicast_trans_count = xbee_get_unicast_trans_count(xbee);
-	    	xbee->rssi = xbee_read_last_rssi(xbee);
-	    	chprintf((BaseSequentialStream*)&SD1, "Bytes transmitted:     %d\r\n", xbee->bytes_transmitted);
-	    	chprintf((BaseSequentialStream*)&SD1, "Good packets received: %d\r\n", xbee->good_packs_res);
-	    	chprintf((BaseSequentialStream*)&SD1, "Received errors count: %d\r\n", xbee->rec_err_count);
-	    	chprintf((BaseSequentialStream*)&SD1, "Transceiver errors:    %d\r\n", xbee->trans_errs);
-	    	chprintf((BaseSequentialStream*)&SD1, "Unicast transmittions: %d\r\n", xbee->unicast_trans_count);
-	    	chprintf((BaseSequentialStream*)&SD1, "RSSI:                  %d\r\n", xbee->rssi);
-	    	break;
-	    }
+		/* Perform processing here.*/
+		//chprintf((BaseSequentialStream*)&SD1, "thd_xbee\n\r");
+		switch (msg){
+		case XBEE_GET_OWN_ADDR:
+			xbee_read_own_addr(xbee);
+			break;
+		case XBEE_GET_RSSI:
+			xbee->rssi = xbee_read_last_rssi(xbee);
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "RSSI: %d\r\n", xbee->rssi);
+			chSemSignal(&usart1_semaph);
+			break;
+		case XBEE_GET_PACKET_PAYLOAD:
+			xbee->packet_payload = xbee_get_packet_payload(xbee);
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "Packet payload: %d\r\n", xbee->packet_payload);
+			chSemSignal(&usart1_semaph);
+			break;
+		case XBEE_GET_STAT:
+			xbee->bytes_transmitted = xbee_get_bytes_transmitted(xbee);
+			xbee->good_packs_res = xbee_get_good_packets_res(xbee);
+			xbee->rec_err_count = xbee_get_received_err_count(xbee);
+			xbee->trans_errs = xbee_get_transceived_err_count(xbee);
+			xbee->unicast_trans_count = xbee_get_unicast_trans_count(xbee);
+			xbee->rssi = xbee_read_last_rssi(xbee);
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "Bytes transmitted:     %d\r\n", xbee->bytes_transmitted);
+			chprintf((BaseSequentialStream*)&SD1, "Good packets received: %d\r\n", xbee->good_packs_res);
+			chprintf((BaseSequentialStream*)&SD1, "Received errors count: %d\r\n", xbee->rec_err_count);
+			chprintf((BaseSequentialStream*)&SD1, "Transceiver errors:    %d\r\n", xbee->trans_errs);
+			chprintf((BaseSequentialStream*)&SD1, "Unicast transmittions: %d\r\n", xbee->unicast_trans_count);
+			chprintf((BaseSequentialStream*)&SD1, "RSSI:                  %d\r\n", xbee->rssi);
+			chSemSignal(&usart1_semaph);
+			break;
+		}
 
-	    xbee->suspend_state = 1;
-  }
-}
-
-/*
- * This is a thread that serve SPI1 bus with Xbee module
- * and second CPU
- */
-
-static THD_WORKING_AREA(spi1_thread_wa, 512);
-static THD_FUNCTION(spi1_thread, p){
-	(void)p;
-	uint8_t i;
-
-	chRegSetThreadName("spi1_thread");
-	while(true){
-		chThdSleepMilliseconds(1000);
+		xbee->suspend_state = 1;
 	}
 }
-
-
+/*
 static THD_WORKING_AREA(spi2_thread_wa, 1024);
 static THD_FUNCTION(spi2_thread, p) {
-	char *ptr;
-	float deltat = 0.2f;
-	uint8_t rxbuf[200];
 	int32_t spdi = 0;
 	char lon[20];
 	char lat[20];
 	double spd;
-  (void)p;
+	(void)p;
 
-  chRegSetThreadName("SPI thread 1");
-  while (true) {
-    chThdSleepMilliseconds(500);
-    //chprintf((BaseSequentialStream*)&SD1, "thd2\n\r");
-    memset(lon, '\0',20);
-   	memset(lat, '\0',20);
+	chRegSetThreadName("SPI2 thread");
+	while (true) {
+		chThdSleepMilliseconds(500);
+		//chprintf((BaseSequentialStream*)&SD1, "thd2\n\r");
+		memset(lon, '\0',20);
+		memset(lat, '\0',20);
 
-   	neo_poll();
-    //neo_poll_nav_pvt();
-    //chprintf((BaseSequentialStream*)&SD1, "thd2_2\n\r");
-    itoa(pvt_box->lat, lat, 10);
-    itoa(pvt_box->lon, lon, 10);
-    insert_dot(lat);
-    insert_dot(lon);
-    spd = (float)(pvt_box->gSpeed * 0.0036);
-    spdi = (int32_t)(spd);
-/*
+		neo_poll();
+		//neo_poll_nav_pvt();
+		//chprintf((BaseSequentialStream*)&SD1, "thd2_2\n\r");
+		itoa(pvt_box->lat, lat, 10);
+		itoa(pvt_box->lon, lon, 10);
+		insert_dot(lat);
+		insert_dot(lon);
+		spd = (float)(pvt_box->gSpeed * 0.0036);
+		spdi = (int32_t)(spd);
+		/*
 
     chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
     chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
@@ -201,8 +238,8 @@ static THD_FUNCTION(spi2_thread, p) {
     chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
     chprintf((BaseSequentialStream*)&SD1, "%d",  spdi);
     chprintf((BaseSequentialStream*)&SD1, "\r\n");
-*/
-    /*
+
+
     chprintf((BaseSequentialStream*)&SD1, "YEAR: %d\n\r", pvt_box->year);
     chprintf((BaseSequentialStream*)&SD1, "MONT: %d\n\r", pvt_box->month);
     chprintf((BaseSequentialStream*)&SD1, "DAY:  %d\n\r", pvt_box->day);
@@ -216,41 +253,38 @@ static THD_FUNCTION(spi2_thread, p) {
     chprintf((BaseSequentialStream*)&SD1, "SV:   %d\n\r", pvt_box->numSV);
     chprintf((BaseSequentialStream*)&SD1, "SPD:  %d\n\r", spdi);
     chprintf((BaseSequentialStream*)&SD1, "\n\n\r");
+
+		// ftoa(ptr,ax,5);
+		//chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+		//									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
+		//chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
+		//   								(int32_t)ax, (int32_t)ay, (int32_t)az, (int32_t)gx, (int32_t)gy, (int32_t)gz, (int32_t)mx, (int32_t)my, (int32_t)mz);
+		//chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r", (int32_t)yaw, (int32_t)pitch, (int32_t)roll);
+	}
+}
 */
-    //mpu_read_accel_data(&accelCount[0]);
-    //mpu_read_gyro_data(&gyroCount[0]);
-    //mpu_read_mag_data(&magCount[0]);
+
 /*
-    // Now we'll calculate the accleration value into actual g's
-    ax = (float)accelCount[0]*aRes - accelBias[0];  // get actual g value, this depends on scale being set
-    ay = (float)accelCount[1]*aRes - accelBias[1];
-    az = (float)accelCount[2]*aRes - accelBias[2];
+ * Thread to process data collection and filtering from NEO-M8P
+ */
+thread_reference_t coords_trp = NULL;
+static THD_WORKING_AREA(coords_thread_wa, 512);
+static THD_FUNCTION(coords_thread, arg) {
 
-    // Calculate the gyro value into actual degrees per second
-    gx = (float)gyroCount[0]*gRes - gyroBias[0];  // get actual gyro value, this depends on scale being set
-    gy = (float)gyroCount[1]*gRes - gyroBias[1];
-    gz = (float)gyroCount[2]*gRes - gyroBias[2];
-
-    mx = (float)magCount[0]*mRes*magCalibration[0] - magbias[0];  // get actual magnetometer value, this depends on scale being set
-    my = (float)magCount[1]*mRes*magCalibration[1] - magbias[1];
-    mz = (float)magCount[2]*mRes*magCalibration[2] - magbias[2];
-
-    MahonyQuaternionUpdate(ax, ay, az, gx*PI/180.0f, gy*PI/180.0f, gz*PI/180.0f, my, mx, mz, deltat);
-    yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-    pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-    roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
-    pitch *= 180.0f / PI;
-    yaw   *= 180.0f / PI;
-    yaw   -= 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
-    roll  *= 180.0f / PI;
-    chThdSleepMilliseconds(100); */
-   // ftoa(ptr,ax,5);
-   //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-    //									accel_data[0], accel_data[1], accel_data[2], gyro_data[0], gyro_data[1], gyro_data[2], mag_data[0], mag_data[1], mag_data[2]);
-    //chprintf((BaseSequentialStream*)&SD1, "ACCEL X: %d ACCEL_Y: %d ACCEL_Z: %d \r\nGYRO_X: %d GYRO_Y: %d GYRO_Z: %d \r\nMAG_X: %d MAG_Y: %d MAG_Z: %d \r\n\n",
-     //   								(int32_t)ax, (int32_t)ay, (int32_t)az, (int32_t)gx, (int32_t)gy, (int32_t)gz, (int32_t)mx, (int32_t)my, (int32_t)mz);
-    //chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r", (int32_t)yaw, (int32_t)pitch, (int32_t)roll);
-  }
+	(void)arg;
+	msg_t msg;
+	chRegSetThreadName("GPS Parse Thread");
+	while (true) {
+		chSysLock();
+		if (mpu->suspend_state) {
+			msg = chThdSuspendS(&coords_trp);
+		}
+		chSysUnlock();
+		neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
+		chThdSleepMilliseconds(50);
+		neo_poll();
+		palToggleLine(LINE_RED_LED);
+	}
 }
 
 /*
@@ -260,36 +294,23 @@ thread_reference_t mpu_trp = NULL;
 static THD_WORKING_AREA(mpu_thread_wa, 512);
 static THD_FUNCTION(mpu_thread, arg) {
 
-  (void)arg;
-  msg_t msg;
-  chRegSetThreadName("MPU9250 Thread");
-  while (true) {
-	  chSysLock();
-	  		   if (mpu->suspend_state) {
-	  		       	msg = chThdSuspendS(&mpu_trp);
-	  		    }
-	  		chSysUnlock();
-  }
+	(void)arg;
+	msg_t msg;
+	chRegSetThreadName("MPU9250 Thread");
+	while (true) {
+		chSysLock();
+		if (mpu->suspend_state) {
+			msg = chThdSuspendS(&mpu_trp);
+		}
+		chSysUnlock();
+		switch(msg){
+		case MPU_GET_GYRO_DATA:
+			mpu_get_gyro_data();
+			break;
+		}
+	}
 }
 
-/*
- * Thread to process data collection and filtering from UBLOX NEO-M8P
- */
-thread_reference_t gps_trp = NULL;
-static THD_WORKING_AREA(gps_thread_wa, 512);
-static THD_FUNCTION(gps_thread, arg) {
-
-  (void)arg;
-  msg_t msg;
-  chRegSetThreadName("NEO-M8P Thread");
-  while (true) {
-	  chSysLock();
-	  		   if (neo->suspend_state) {
-	  		       	msg = chThdSuspendS(&gps_trp);
-	  		    }
-	  		chSysUnlock();
-  }
-}
 
 /*
  * Thread that outputs debug data which is needed
@@ -298,32 +319,48 @@ thread_reference_t output_trp = NULL;
 static THD_WORKING_AREA(output_thread_wa, 1024);
 static THD_FUNCTION(output_thread, arg) {
 
-  (void)arg;
-  msg_t msg;
-  chRegSetThreadName("Data output Thread");
-  while (true) {
-	  chSysLock();
-	  		   if (output->suspend_state) {
-	  		       	msg = chThdSuspendS(&output_trp);
-	  		    }
-	  		chSysUnlock();
-	  		//chprintf((BaseSequentialStream*)&SD1, "output is %d\n\r", output->test);
-	  if (output->test){
-		  chprintf((BaseSequentialStream*)&SD1, "Test output\n\r");
-	  }else{
-		  if (output->gps){
-		  chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
-	  }else if (output->ypr){
-		  chprintf((BaseSequentialStream*)&SD1, "YPR output\n\r");
-	  }else if (output->gyro){
-		  chprintf((BaseSequentialStream*)&SD1, "GYRO output\n\r");
-	  }
-  }
-	  output->suspend_state = 1;
-	  palToggleLine(LINE_GREEN_LED);
-  }
+	(void)arg;
+	msg_t msg;
+	chRegSetThreadName("Data output Thread");
+	while (true) {
+		chSysLock();
+		if (output->suspend_state) {
+			msg = chThdSuspendS(&output_trp);
+		}
+		chSysUnlock();
+		//chprintf((BaseSequentialStream*)&SD1, "output is %d\n\r", output->test);
+		if (output->test){
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "Test output\n\r");
+			chSemSignal(&usart1_semaph);
+		}else{
+			if (output->gps){
+				chSemWait(&usart1_semaph);
+				chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
+				chSemSignal(&usart1_semaph);
+			}else if (output->ypr){
+				chSemWait(&usart1_semaph);
+				chprintf((BaseSequentialStream*)&SD1, "YPR output\n\r");
+				chSemSignal(&usart1_semaph);
+			}else if (output->gyro){
+				chSemWait(&usart1_semaph);
+				chprintf((BaseSequentialStream*)&SD1, "GYRO output\n\r");
+				chSemSignal(&usart1_semaph);
+			}
+		}
+		output->suspend_state = 1;
+
+	}
 }
 
+static void gpt12cb(GPTDriver *gptp){
+	(void)gptp;
+
+		chSysLockFromISR();
+		chThdResumeI(&coords_trp, (msg_t)0x1137);  /* Resuming the thread with message.*/
+		chSysUnlockFromISR();
+
+}
 
 /*
  * GPT14  callback.
@@ -334,15 +371,11 @@ static void gpt14cb(GPTDriver *gptp)
 
 	chSysLockFromISR();
 	chThdResumeI(&output_trp, (msg_t)0x1137);  /* Resuming the thread with message.*/
+	palToggleLine(LINE_GREEN_LED);
 	chSysUnlockFromISR();
 }
-static GPTConfig gpt14cfg =
-{
-  20000,      // Timer clock
-  gpt14cb,        // Callback function
-  0,
-  0
-};
+
+
 /*
  * This is a periodic thread that does absolutely nothing except flashing
  * a LED.
@@ -350,107 +383,152 @@ static GPTConfig gpt14cfg =
 static THD_WORKING_AREA(waThread1, 128);
 static THD_FUNCTION(Thread1, arg) {
 
-  (void)arg;
-  chRegSetThreadName("blinker");
-  while (true) {
-    palSetLine(LINE_ORANGE_LED);
-    chThdSleepMilliseconds(500);
-    palClearLine(LINE_ORANGE_LED);
-    chThdSleepMilliseconds(500);
-  }
+	(void)arg;
+	chRegSetThreadName("blinker");
+	while (true) {
+		palSetLine(LINE_ORANGE_LED);
+		chThdSleepMilliseconds(500);
+		palClearLine(LINE_ORANGE_LED);
+		chThdSleepMilliseconds(500);
+	}
 }
 
+void init_modules(void){
+	chSysLock();
+	neo_switch_to_ubx();
+	chThdSleepMilliseconds(50);
+	neo_poll();
 
+
+	chThdSleepMilliseconds(50);
+	neo_set_pvt_1hz();
+	chThdSleepMilliseconds(50);
+	neo_poll();
+	chThdSleepMilliseconds(50);
+	neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
+	chThdSleepMilliseconds(50);
+	neo_poll();
+	rate_box->measRate = 250;
+	chThdSleepMilliseconds(50);
+	neo_write_struct((uint8_t *)rate_box, UBX_CFG_CLASS, UBX_CFG_RATE_ID, sizeof(ubx_cfg_rate_t));
+	chThdSleepMilliseconds(50);
+	neo_poll();
+	chThdSleepMilliseconds(50);
+	neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
+	chThdSleepMilliseconds(50);
+	neo_poll();
+	chThdSleepMilliseconds(100);
+
+	neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_NAV5_ID);
+	chThdSleepMilliseconds(100);
+	neo_poll();
+	chThdSleepMilliseconds(50);
+	neo_poll();
+	chThdSleepMilliseconds(50);
+	//neo_write_struct((uint8_t *)nav5_box, UBX_CFG_CLASS, UBX_CFG_NAV5_ID, sizeof(ubx_cfg_nav5_t));
+	//chThdSleepMilliseconds(50);
+	//neo_poll();
+	chSysUnlock();
+}
 
 /*
  * Application entry point.
  */
 int main(void) {
 
-  /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
-   */
-  halInit();
-  chSysInit();
+	/*
+	 * System initializations.
+	 * - HAL initialization, this also initializes the configured device drivers
+	 *   and performs the board-specific initializations.
+	 * - Kernel initialization, the main() function becomes a thread and the
+	 *   RTOS is active.
+	 */
+	halInit();
+	chSysInit();
+	chSemObjectInit(&usart1_semaph, 1);
+	/*
+	 * Activates the serial driver 1 using the driver default configuration.
+	 */
+	sdStart(&SD1, NULL);
+	spiStart(&SPID1, &spi1_cfg);
+	spiStart(&SPID2, &spi2_cfg);
 
-  /*
-   * Activates the serial driver 1 using the driver default configuration.
-   */
-  sdStart(&SD1, NULL);
-  spiStart(&SPID1, &spi1_cfg);
-  spiStart(&SPID2, &spi2_cfg);
+	xbee->suspend_state = 1;
 
-  xbee->suspend_state = 1;
+	/*
+     B* Shell manager initialization.
+	 */
+#ifdef USE_SD_SHELL
 
-  /*
-     * Shell manager initialization.
-     */
-  #ifdef USE_SD_SHELL
-
-    sdStart(&SD1, NULL);
-    shellInit();
-  #else
-    sdStart(&SD1, NULL);
-  #endif
-
-   // calibrateMPU9250(gyroBias, accelBias);
-  //	mpu9250_init();
-  	chThdSleepMilliseconds(100);
+	sdStart(&SD1, NULL);
+	shellInit();
+#else
+	sdStart(&SD1, NULL);
+#endif
 
 
-  	getAres(); // Get accelerometer sensitivity
-  	getGres(); // Get gyro sensitivity
-  	getMres(); // Get magnetometer sensitivity
-  	magbias[0] = +470.;  // User environmental x-axis correction in milliGauss, should be automatically calculated
-  	magbias[1] = +120.;  // User environmental x-axis correction in milliGauss
-  	magbias[2] = +125.;  // User environmental x-axis correction in milliGauss
-  	//initAK8963(&calib[0]);
+
+	//calibrateMPU9250(gyroBias, accelBias);
+	//mpu9250_init();
+	chThdSleepMilliseconds(100);
 
 
-  	output->suspend_state = 1;
-    xbee->suspend_state = 1;
-    neo->suspend_state = 1;
-    mpu->suspend_state = 1;
-  	// set up the timer
-    gptStart(&GPTD14, &gpt14cfg);
-    neo_switch_to_ubx();
-    chThdSleepMilliseconds(1000);
-    neo_set_pvt_1hz();
-  /*
-   * Creates threads.
-   */
-  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-  chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
-  chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 1, mpu_thread, NULL);
-  chThdCreateStatic(gps_thread_wa, sizeof(gps_thread_wa), NORMALPRIO + 1, gps_thread, NULL);
-  chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 1, output_thread, NULL);
-  chThdCreateStatic(spi1_thread_wa, sizeof(spi1_thread_wa), NORMALPRIO + 1, spi1_thread, NULL);
-  chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
+	getAres(); // Get accelerometer sensitivity
+	getGres(); // Get gyro sensitivity
+	getMres(); // Get magnetometer sensitivity
 
-  palToggleLine(LINE_GREEN_LED);
-  xbee_thread_execute(XBEE_GET_OWN_ADDR);
+	//initAK8963(&calib[0]);
 
 
-//chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
-  chThdSleepMilliseconds(1000);
-  xbee_thread_execute(XBEE_GET_PACKET_PAYLOAD);
+	output->suspend_state = 1;
+	xbee->suspend_state = 1;
+	xbee->poll_suspend_state = 1;
+	neo->suspend_state = 1;
+	mpu->suspend_state = 1;
+	// set up the timer
+	gptStart(&GPTD12, &gpt12cfg);
+	gptStart(&GPTD14, &gpt14cfg);
+	//chSysLock();
+	palSetLine(LINE_ORANGE_LED);
+	/*
+	 * Creates threads.
+	 */
+//	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO+2, Thread1, NULL);
+	//chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
+	//chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 1, xbee_poll_thread, NULL);
+	//chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 1, mpu_thread, NULL);
+	//chThdCreateStatic(gps_thread_wa, sizeof(gps_thread_wa), NORMALPRIO + 1, gps_thread, NULL);
+	//chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 1, coords_thread, NULL);
+	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 1, output_thread, NULL);
+	//chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
-  // configure the timer to fire after 25 timer clock tics
-    //   The clock is running at 200,000Hz, so each tick is 50uS,
-    //   so 200,000 / 25 = 8,000Hz
-    gptStartContinuous(&GPTD14, 5000);
-  /*
-   * Normal main() thread activity, in this demo it does nothing except
-   * sleeping in a loop and check the button state.
-   */
-  while (true) {
-	  thread_t *shelltp = cmd_init();
-	      chThdWait(shelltp);               /* Waiting termination.*/
-	  chThdSleepMilliseconds(5000);
+	//palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
+	//palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
-  }
+
+	//xbee_thread_execute(XBEE_GET_OWN_ADDR);
+
+
+	//chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
+	chThdSleepMilliseconds(1000);
+	//xbee_thread_execute(XBEE_GET_PACKET_PAYLOAD);
+	init_modules();
+	// configure the timer to fire after 25 timer clock tics
+	//   The clock is running at 200,000Hz, so each tick is 50uS,
+	//   so 200,000 / 25 = 8,000Hz
+	gptStartContinuous(&GPTD12, 5000);
+	gptStartContinuous(&GPTD14, 5000);
+	//chSysUnlock();
+		palToggleLine(LINE_GREEN_LED);
+	/*
+	 * Normal main() thread activity, in this demo it does nothing except
+	 * sleeping in a loop and check the button state.
+	 */
+	while (true) {
+
+		thread_t *shelltp = cmd_init();
+		chThdWait(shelltp);               /* Waiting termination.*/
+		chThdSleepMilliseconds(5000);
+
+	}
 }
