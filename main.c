@@ -37,9 +37,11 @@ extern neo_struct_t *neo;
 extern mpu_struct_t *mpu;
 extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
+extern float calib[];
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 
+static void gpt11cb(GPTDriver *gptp);
 static void gpt12cb(GPTDriver *gptp);
 static void gpt14cb(GPTDriver *gptp);
 
@@ -70,6 +72,14 @@ static GPTConfig gpt12cfg =
 		0
 };
 
+static GPTConfig gpt11cfg =
+{
+		20000,      // Timer clock
+		gpt11cb,        // Callback function
+		0,
+		0
+};
+
 /*
  * Maximum speed SPI configuration (3.3MHz, CPHA=0, CPOL=0, MSb first).
  */
@@ -83,7 +93,7 @@ static const SPIConfig spi1_cfg = {
 		0
 };
 
-static const SPIConfig spi2_cfg = {
+const SPIConfig neo_spi_cfg = {
 		false,
 		NULL,
 		GPIOC,
@@ -93,19 +103,28 @@ static const SPIConfig spi2_cfg = {
 		0
 };
 
+const SPIConfig mpu_spi_cfg = {
+		false,
+		NULL,
+		GPIOC,
+		GPIOC_MCU_CS,
+		SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0 | SPI_CR1_CPOL,
+		//0,
+		0
+};
 
 thread_reference_t xbee_poll_trp = NULL;
 
-static THD_WORKING_AREA(xbee_poll_thread_wa, 128);
+static THD_WORKING_AREA(xbee_poll_thread_wa, 1024);
 static THD_FUNCTION(xbee_poll_thread, p){
 	uint8_t len, i;
 	uint8_t txbuff[20];
 	uint8_t rxbuff[20];
-	uint8_t megabuff[256+24];	//Max payload lenth + headers etc
+	uint8_t megabuff[32+24];	//Max payload lenth + headers etc
 	uint8_t crc;
 	msg_t msg;
 	chRegSetThreadName("XBee polling thd");
-	memset(megabuff, 0x00, 256+24);
+	memset(megabuff, 0x00, 32+24);
 	memset(txbuff, 0x00, 20);
 	while (true){
 		chSysLock();
@@ -113,7 +132,7 @@ static THD_FUNCTION(xbee_poll_thread, p){
 			msg = chThdSuspendS(&xbee_poll_trp);
 		}
 		chSysUnlock();
-		palToggleLine(LINE_RED_LED);
+
 		for (i = 0; i < 30; i++){
 			xbee_read_no_cs(&SPID1, 1, &rxbuff[0]);
 			if ( rxbuff[0] == 0x7E ){
@@ -150,7 +169,7 @@ static THD_FUNCTION(xbee_poll_thread, p){
 
 thread_reference_t xbee_trp = NULL;
 
-static THD_WORKING_AREA(xbee_thread_wa, 128);
+static THD_WORKING_AREA(xbee_thread_wa, 1024);
 static THD_FUNCTION(xbee_thread, p){
 	(void)p;
 	msg_t msg;
@@ -305,21 +324,77 @@ static THD_FUNCTION(mpu_thread, arg) {
 		chSysUnlock();
 		switch(msg){
 		case MPU_GET_GYRO_DATA:
+
 			mpu_get_gyro_data();
 			break;
 		}
 	}
 }
+/*
+ * This is a periodic thread that does absolutely nothing except flashing
+ * a LED.
+ */
+thread_reference_t shell_trp = NULL;
+static THD_WORKING_AREA(shell_thread_wa, 512);
+static THD_FUNCTION(shell_thread, arg) {
 
+	(void)arg;
+		msg_t msg;
+		chRegSetThreadName("Shell Thread");
+		while (true) {
+			chSysLock();
+		//	if (shell->suspend_state) {
+				msg = chThdSuspendS(&shell_trp);
+		//	}
+			chSysUnlock();
+
+			/* Perform processing here.*/
+			//chprintf((BaseSequentialStream*)&SD1, "thd_xbee\n\r");
+			switch (msg){
+			case SHELL_UBX_COG_STATUS:
+				neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_NAV5_ID);
+				chThdSleepMilliseconds(100);
+				neo_poll();
+				chThdSleepMilliseconds(50);
+				neo_poll();
+				chThdSleepMilliseconds(50);
+				break;
+			case SHELL_UBX_RATE_STATUS:
+				neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
+				chThdSleepMilliseconds(50);
+				neo_poll();
+				chThdSleepMilliseconds(50);
+				neo_poll();
+				break;
+			case SHELL_UBX_RATE_SET:
+				neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
+					chThdSleepMilliseconds(50);
+					neo_poll();
+					rate_box->measRate = 250;
+					chThdSleepMilliseconds(50);
+					neo_write_struct((uint8_t *)rate_box, UBX_CFG_CLASS, UBX_CFG_RATE_ID, sizeof(ubx_cfg_rate_t));
+					chThdSleepMilliseconds(50);
+					neo_poll();
+					chThdSleepMilliseconds(50);
+					break;
+			default:
+				break;
+			//xbee->suspend_state = 1;
+		}
+		}
+}
 
 /*
  * Thread that outputs debug data which is needed
  */
 thread_reference_t output_trp = NULL;
-static THD_WORKING_AREA(output_thread_wa, 1024);
+static THD_WORKING_AREA(output_thread_wa, 1024*2);
 static THD_FUNCTION(output_thread, arg) {
-
 	(void)arg;
+	int32_t spdi = 0;
+	char lon[20];
+	char lat[20];
+	double spd;
 	msg_t msg;
 	chRegSetThreadName("Data output Thread");
 	while (true) {
@@ -328,6 +403,7 @@ static THD_FUNCTION(output_thread, arg) {
 			msg = chThdSuspendS(&output_trp);
 		}
 		chSysUnlock();
+		palToggleLine(LINE_GREEN_LED);
 		//chprintf((BaseSequentialStream*)&SD1, "output is %d\n\r", output->test);
 		if (output->test){
 			chSemWait(&usart1_semaph);
@@ -335,12 +411,28 @@ static THD_FUNCTION(output_thread, arg) {
 			chSemSignal(&usart1_semaph);
 		}else{
 			if (output->gps){
+
+				itoa(pvt_box->lat, lat, 10);
+				itoa(pvt_box->lon, lon, 10);
+				insert_dot(lat);
+				insert_dot(lon);
+				spd = (float)(pvt_box->gSpeed * 0.0036);
+				spdi = (int32_t)(spd);
 				chSemWait(&usart1_semaph);
-				chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
+				//chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
+			    chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
+			    chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
+			    chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->hour);
+			    chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->min);
+			    chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->sec);
+			    chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
+			    chprintf((BaseSequentialStream*)&SD1, "%d",  spdi);
+			    chprintf((BaseSequentialStream*)&SD1, "\r\n");
 				chSemSignal(&usart1_semaph);
 			}else if (output->ypr){
 				chSemWait(&usart1_semaph);
-				chprintf((BaseSequentialStream*)&SD1, "YPR output\n\r");
+				chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r",
+								(int32_t)mpu->yaw, (int32_t)mpu->pitch, (int32_t)mpu->roll);
 				chSemSignal(&usart1_semaph);
 			}else if (output->gyro){
 				chSemWait(&usart1_semaph);
@@ -351,6 +443,15 @@ static THD_FUNCTION(output_thread, arg) {
 		output->suspend_state = 1;
 
 	}
+}
+
+static void gpt11cb(GPTDriver *gptp){
+	(void)gptp;
+
+		chSysLockFromISR();
+		chThdResumeI(&mpu_trp, (msg_t)MPU_GET_GYRO_DATA);  /* Resuming the thread with message.*/
+		chSysUnlockFromISR();
+
 }
 
 static void gpt12cb(GPTDriver *gptp){
@@ -371,7 +472,6 @@ static void gpt14cb(GPTDriver *gptp)
 
 	chSysLockFromISR();
 	chThdResumeI(&output_trp, (msg_t)0x1137);  /* Resuming the thread with message.*/
-	palToggleLine(LINE_GREEN_LED);
 	chSysUnlockFromISR();
 }
 
@@ -435,7 +535,7 @@ void init_modules(void){
  * Application entry point.
  */
 int main(void) {
-
+	thread_t *sh = NULL;
 	/*
 	 * System initializations.
 	 * - HAL initialization, this also initializes the configured device drivers
@@ -451,7 +551,7 @@ int main(void) {
 	 */
 	sdStart(&SD1, NULL);
 	spiStart(&SPID1, &spi1_cfg);
-	spiStart(&SPID2, &spi2_cfg);
+	spiStart(&SPID2, &neo_spi_cfg);
 
 	xbee->suspend_state = 1;
 
@@ -462,23 +562,24 @@ int main(void) {
 
 	sdStart(&SD1, NULL);
 	shellInit();
+	chSemWait(&usart1_semaph);
+	sh = cmd_init();
+	chSemSignal(&usart1_semaph);
 #else
 	sdStart(&SD1, NULL);
 #endif
 
 
+	mpu9250_init();
+	chThdSleepMilliseconds(100);
 
-	//calibrateMPU9250(gyroBias, accelBias);
-	//mpu9250_init();
 	chThdSleepMilliseconds(100);
 
 
-	getAres(); // Get accelerometer sensitivity
-	getGres(); // Get gyro sensitivity
-	getMres(); // Get magnetometer sensitivity
-
-	//initAK8963(&calib[0]);
-
+	initAK8963(&mpu->magCalibration[0]);
+	chSemWait(&usart1_semaph);
+	chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
+	chSemSignal(&usart1_semaph);
 
 	output->suspend_state = 1;
 	xbee->suspend_state = 1;
@@ -486,49 +587,61 @@ int main(void) {
 	neo->suspend_state = 1;
 	mpu->suspend_state = 1;
 	// set up the timer
+	gptStart(&GPTD11, &gpt11cfg);
 	gptStart(&GPTD12, &gpt12cfg);
 	gptStart(&GPTD14, &gpt14cfg);
 	//chSysLock();
-	palSetLine(LINE_ORANGE_LED);
+	//palSetLine(LINE_ORANGE_LED);
 	/*
 	 * Creates threads.
 	 */
-//	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO+2, Thread1, NULL);
-	//chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
-	//chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 1, xbee_poll_thread, NULL);
-	//chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 1, mpu_thread, NULL);
-	//chThdCreateStatic(gps_thread_wa, sizeof(gps_thread_wa), NORMALPRIO + 1, gps_thread, NULL);
-	//chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 1, coords_thread, NULL);
-	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 1, output_thread, NULL);
-	//chThdCreateStatic(spi2_thread_wa, sizeof(spi2_thread_wa), NORMALPRIO + 2, spi2_thread, NULL);
 
+	chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
+	chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 2, xbee_poll_thread, NULL);
+	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
+	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
+	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), HIGHPRIO, mpu_thread, NULL);
+	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 4, coords_thread, NULL);
 	//palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	//palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
-
+	//chSysLock();
+	gptStartContinuous(&GPTD11, 4000);
+	chThdSleepMilliseconds(100);
+	gptStartContinuous(&GPTD12, 5000);
+	chThdSleepMilliseconds(100);
+	gptStartContinuous(&GPTD14, 5000);
+	//chSysUnlock();
 	//xbee_thread_execute(XBEE_GET_OWN_ADDR);
 
 
 	//chprintf((BaseSequentialStream*)&SD1, "Init\n\r");
-	chThdSleepMilliseconds(1000);
+	chThdSleepMilliseconds(3000);
 	//xbee_thread_execute(XBEE_GET_PACKET_PAYLOAD);
-	init_modules();
+	chSysLock();
+		//init_modules();
+		chSysUnlock();
+	neo_switch_to_ubx();
+	chThdSleepMilliseconds(50);
 	// configure the timer to fire after 25 timer clock tics
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
-	gptStartContinuous(&GPTD12, 5000);
-	gptStartContinuous(&GPTD14, 5000);
-	//chSysUnlock();
-		palToggleLine(LINE_GREEN_LED);
+
+
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
 	 */
 	while (true) {
 
-		thread_t *shelltp = cmd_init();
-		chThdWait(shelltp);               /* Waiting termination.*/
-		chThdSleepMilliseconds(5000);
+		if (!sh)
+		      sh = cmd_init();
+		    else if (chThdTerminatedX(sh)) {
+		      chThdRelease(sh);
+		      sh = NULL;
+		    }
+		//chThdWait(shelltp);               /* Waiting termination.*/
+		chThdSleepMilliseconds(1000);
 
 	}
 }
