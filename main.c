@@ -37,6 +37,7 @@ extern neo_struct_t *neo;
 extern mpu_struct_t *mpu;
 extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
+struct ch_semaphore spi2_semaph;
 extern float calib[];
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
@@ -326,6 +327,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 		case MPU_GET_GYRO_DATA:
 
 			mpu_get_gyro_data();
+
 			break;
 		}
 	}
@@ -431,12 +433,16 @@ static THD_FUNCTION(output_thread, arg) {
 				chSemSignal(&usart1_semaph);
 			}else if (output->ypr){
 				chSemWait(&usart1_semaph);
-				chprintf((BaseSequentialStream*)&SD1, "Yaw: %d, Pitch: %d, Roll: %d\n\r",
-								(int32_t)mpu->yaw, (int32_t)mpu->pitch, (int32_t)mpu->roll);
+				chprintf((BaseSequentialStream*)&SD1, "Yaw: %f, Pitch: %f, Roll: %f\n\r",
+															mpu->yaw, mpu->pitch, mpu->roll);
 				chSemSignal(&usart1_semaph);
+
 			}else if (output->gyro){
 				chSemWait(&usart1_semaph);
-				chprintf((BaseSequentialStream*)&SD1, "GYRO output\n\r");
+				chprintf((BaseSequentialStream*)&SD1, "AX: %d, AY: %d, AZ: %d  GX: %d, GY: %d, GZ: %d  MX: %d, MY: %d, MZ: %d\r\n",
+						mpu->accelCount[0], mpu->accelCount[1], mpu->accelCount[2],
+						mpu->gyroCount[0], mpu->gyroCount[1], mpu->gyroCount[2],
+						mpu->magCount[0], mpu->magCount[1], mpu->magCount[2]);
 				chSemSignal(&usart1_semaph);
 			}
 		}
@@ -546,6 +552,7 @@ int main(void) {
 	halInit();
 	chSysInit();
 	chSemObjectInit(&usart1_semaph, 1);
+	chSemObjectInit(&spi2_semaph, 1);
 	/*
 	 * Activates the serial driver 1 using the driver default configuration.
 	 */
@@ -606,7 +613,7 @@ int main(void) {
 	//palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
 	//chSysLock();
-	gptStartContinuous(&GPTD11, 4000);
+	gptStartContinuous(&GPTD11, 500);
 	chThdSleepMilliseconds(100);
 	gptStartContinuous(&GPTD12, 5000);
 	chThdSleepMilliseconds(100);
