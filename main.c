@@ -42,6 +42,7 @@ extern float calib[];
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 
+static void gpt9cb(GPTDriver *gptp);
 static void gpt11cb(GPTDriver *gptp);
 static void gpt12cb(GPTDriver *gptp);
 static void gpt14cb(GPTDriver *gptp);
@@ -77,6 +78,14 @@ static GPTConfig gpt11cfg =
 {
 		20000,      // Timer clock
 		gpt11cb,        // Callback function
+		0,
+		0
+};
+
+static GPTConfig gpt9cfg =
+{
+		20000,      // Timer clock
+		gpt9cb,        // Callback function
 		0,
 		0
 };
@@ -118,22 +127,28 @@ thread_reference_t xbee_poll_trp = NULL;
 
 static THD_WORKING_AREA(xbee_poll_thread_wa, 1024);
 static THD_FUNCTION(xbee_poll_thread, p){
-	uint8_t len, i;
-	uint8_t txbuff[20];
-	uint8_t rxbuff[20];
-	uint8_t megabuff[32+24];	//Max payload lenth + headers etc
-	uint8_t crc;
+	(void)p;
 	msg_t msg;
+	uint8_t i;
+	uint8_t txbuff[20];
+	//uint8_t rxbuff[20];
+	//uint8_t megabuff[32+24];	//Max payload lenth + headers etc
+	//uint8_t crc;
+	//msg_t msg;
 	chRegSetThreadName("XBee polling thd");
-	memset(megabuff, 0x00, 32+24);
-	memset(txbuff, 0x00, 20);
+	//memset(megabuff, 0x00, 32+24);
+	//memset(txbuff, 0x00, 20);
 	while (true){
 		chSysLock();
 		if (xbee->poll_suspend_state) {
 			msg = chThdSuspendS(&xbee_poll_trp);
 		}
 		chSysUnlock();
-
+		palToggleLine(LINE_RED_LED);
+		if(!palReadLine(LINE_RF_868_SPI_ATTN)){
+		xbee_polling();
+		}
+/*
 		for (i = 0; i < 30; i++){
 			xbee_read_no_cs(&SPID1, 1, &rxbuff[0]);
 			if ( rxbuff[0] == 0x7E ){
@@ -164,7 +179,7 @@ static THD_FUNCTION(xbee_poll_thread, p){
 				}
 
 			}
-		}
+		} */
 	}
 }
 
@@ -218,6 +233,11 @@ static THD_FUNCTION(xbee_thread, p){
 			chprintf((BaseSequentialStream*)&SD1, "RSSI:                  %d\r\n", xbee->rssi);
 			chSemSignal(&usart1_semaph);
 			break;
+		case XBEE_GET_PING:
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "Ping hello message\r\n");
+			chSemSignal(&usart1_semaph);
+			xbee_send_ping_message(xbee);
 		}
 
 		xbee->suspend_state = 1;
@@ -303,7 +323,7 @@ static THD_FUNCTION(coords_thread, arg) {
 		neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
 		chThdSleepMilliseconds(50);
 		neo_poll();
-		palToggleLine(LINE_RED_LED);
+
 	}
 }
 
@@ -451,6 +471,15 @@ static THD_FUNCTION(output_thread, arg) {
 	}
 }
 
+static void gpt9cb(GPTDriver *gptp){
+	(void)gptp;
+
+		chSysLockFromISR();
+		chThdResumeI(&xbee_poll_trp, (msg_t)MPU_GET_GYRO_DATA);  /* Resuming the thread with message.*/
+		chSysUnlockFromISR();
+
+}
+
 static void gpt11cb(GPTDriver *gptp){
 	(void)gptp;
 
@@ -594,6 +623,7 @@ int main(void) {
 	neo->suspend_state = 1;
 	mpu->suspend_state = 1;
 	// set up the timer
+	gptStart(&GPTD9, &gpt9cfg);
 	gptStart(&GPTD11, &gpt11cfg);
 	gptStart(&GPTD12, &gpt12cfg);
 	gptStart(&GPTD14, &gpt14cfg);
@@ -609,11 +639,13 @@ int main(void) {
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), HIGHPRIO, mpu_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 4, coords_thread, NULL);
-	//palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
-	//palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
+	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
+	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
 	//chSysLock();
-	gptStartContinuous(&GPTD11, 500);
+	gptStartContinuous(&GPTD9, 2000);
+	chThdSleepMilliseconds(100);
+	gptStartContinuous(&GPTD11, 50);
 	chThdSleepMilliseconds(100);
 	gptStartContinuous(&GPTD12, 5000);
 	chThdSleepMilliseconds(100);
