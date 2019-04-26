@@ -183,7 +183,7 @@
 #define STM32_GPT_TIM8_IRQ_PRIORITY         7
 #define STM32_GPT_TIM9_IRQ_PRIORITY         7
 #define STM32_GPT_TIM11_IRQ_PRIORITY        7
-#define STM32_GPT_TIM12_IRQ_PRIORITY        8
+#define STM32_GPT_TIM12_IRQ_PRIORITY        7
 #define STM32_GPT_TIM14_IRQ_PRIORITY        7
 
 /*
@@ -293,7 +293,7 @@
 #define STM32_SERIAL_USE_UART4              FALSE
 #define STM32_SERIAL_USE_UART5              FALSE
 #define STM32_SERIAL_USE_USART6             FALSE
-#define STM32_SERIAL_USE_UART7              FALSE
+#define STM32_SERIAL_USE_UART7              TRUE
 #define STM32_SERIAL_USE_UART8              FALSE
 #define STM32_SERIAL_USART1_PRIORITY        14
 #define STM32_SERIAL_USART2_PRIORITY        12
@@ -403,7 +403,7 @@
 /*
  * WDG driver system settings.
  */
-#define STM32_WDG_USE_IWDG                  TRUE
+#define STM32_WDG_USE_IWDG                  FALSE
 
 /*
  * WSPI driver system settings.

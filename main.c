@@ -63,13 +63,16 @@ void insert_dot(char *str){
 /*
  * Watchdog deadline set to more than one second (LSI=40000 / (64 * 1000)).
  */
-static const WDGConfig wdgcfg = {
+/*static const WDGConfig wdgcfg = {
   STM32_IWDG_PR_64,
   STM32_IWDG_RL(512),
   STM32_IWDG_WIN_DISABLED
 };
-
-
+*/
+static SerialConfig sd7cfg =
+{
+		115200
+};
 
 static GPTConfig gpt14cfg =
 {
@@ -111,7 +114,7 @@ static const SPIConfig spi1_cfg = {
 		NULL,
 		GPIOA,
 		GPIOA_RF_868_CS,
-		SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
+		SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,	//FPCLK1 is 54 MHZ. XBEE support 3.5 max, so divide it by 16
 		//  0,
 		0
 };
@@ -145,6 +148,9 @@ static THD_FUNCTION(xbee_poll_thread, p){
 	uint8_t i;
 	uint8_t txbuff[20];
 	chRegSetThreadName("XBee polling thd");
+	gptStop(&GPTD9);
+	gptStart(&GPTD9, &gpt9cfg);
+//	gptStartContinuous(&GPTD9, 2000);
 	while (true){
 		chSysLock();
 		if (xbee->poll_suspend_state) {
@@ -228,13 +234,16 @@ static THD_FUNCTION(coords_thread, arg) {
 	(void)arg;
 	msg_t msg;
 	chRegSetThreadName("GPS Parse");
+	gptStop(&GPTD12);
+	gptStart(&GPTD12, &gpt12cfg);
+	gptStartContinuous(&GPTD12, 5000);
 	while (true) {
 		chSysLock();
-		//if (neo->suspend_state) {
-			//msg = chThdSuspendS(&coords_trp);
-		//}
+		if (neo->suspend_state) {
+			msg = chThdSuspendS(&coords_trp);
+		}
 		chSysUnlock();
-		chThdSleepMilliseconds(150);
+		//chThdSleepMilliseconds(150);
 		neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
 		chThdSleepMilliseconds(50);
 		neo_poll();
@@ -257,6 +266,9 @@ static THD_FUNCTION(mpu_thread, arg) {
 	(void)arg;
 	msg_t msg;
 	chRegSetThreadName("MPU9250 Thread");
+	gptStop(&GPTD11);
+	gptStart(&GPTD11, &gpt11cfg);
+	gptStartContinuous(&GPTD11, 50);
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -335,6 +347,9 @@ static THD_FUNCTION(output_thread, arg) {
 	double spd;
 	msg_t msg;
 	chRegSetThreadName("Data output");
+	gptStop(&GPTD14);
+	gptStart(&GPTD14, &gpt14cfg);
+	gptStartContinuous(&GPTD14, 5000);
 	while (true) {
 		chSysLock();
 		if (output->suspend_state) {
@@ -422,7 +437,7 @@ void send_data(uint8_t stream){
 				tx_box->min, tx_box->sec, tx_box->sat, tx_box->dist, tx_box->speed);
 		chSemSignal(&usart1_semaph);
 //	}else if (stream == OUTPUT_XBEE){
-		wdgReset(&WDGD1);
+	//	wdgReset(&WDGD1);
 		databuff[0] = (uint8_t)(tx_box->lat_cel >> 8);
 		databuff[1] = (uint8_t)(tx_box->lat_cel);
 		databuff[2] = (uint8_t)(tx_box->lat_drob >> 8);
@@ -518,6 +533,12 @@ void init_modules(void){
 	chSysUnlock();
 }
 
+extern void chSysHalt(const char*);
+void _unhandled_exception(void) {
+  //chSysHalt("UNDEFINED IRQ");
+	return;
+}
+
 /*
  * Application entry point.
  */
@@ -555,10 +576,9 @@ int main(void) {
 #else
 	sdStart(&SD1, NULL);
 #endif
-
+	sdStart(&SD7, &sd7cfg);
 
 	mpu9250_init();
-	chThdSleepMilliseconds(100);
 
 	chThdSleepMilliseconds(100);
 
@@ -572,16 +592,19 @@ int main(void) {
 	neo->suspend_state = 1;
 	mpu->suspend_state = 1;
 
+	chSemWait(&usart1_semaph);
+	chprintf((BaseSequentialStream*)&SD1, "MAG\r\n");
+	chSemSignal(&usart1_semaph);
 	  /*
 	   * Starting the watchdog driver.
 	   */
-	wdgStart(&WDGD1, &wdgcfg);
+	//wdgStart(&WDGD1, &wdgcfg);
 
 	// set up the timer
-	gptStart(&GPTD9, &gpt9cfg);
-	gptStart(&GPTD11, &gpt11cfg);
-	gptStart(&GPTD12, &gpt12cfg);
-	gptStart(&GPTD14, &gpt14cfg);
+
+
+
+
 	//wdgReset(&WDGD1);
 
 	/*
@@ -595,8 +618,8 @@ int main(void) {
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
 	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 10, mpu_thread, NULL);
 
-	//palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
-	//palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
+	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
+	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
 	chSemWait(&usart1_semaph);
 		chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
@@ -616,16 +639,6 @@ int main(void) {
 		chSemWait(&usart1_semaph);
 			chprintf((BaseSequentialStream*)&SD1, "neo\r\n");
 			chSemSignal(&usart1_semaph);
-
-	//chSysLock();
-	gptStartContinuous(&GPTD9, 2000);
-	chThdSleepMilliseconds(100);
-	//gptStartContinuous(&GPTD11, 50);
-	chThdSleepMilliseconds(100);
-	//gptStartContinuous(&GPTD12, 5000);
-	chThdSleepMilliseconds(100);
-	gptStartContinuous(&GPTD14, 5000);
-
 
 	chSemWait(&usart1_semaph);
 		chprintf((BaseSequentialStream*)&SD1, "tims\r\n");
