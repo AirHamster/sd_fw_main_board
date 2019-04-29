@@ -464,12 +464,17 @@ void send_data(uint8_t stream){
 	uint8_t databuff[15];
 	int32_t spdi = 0;
 	double spd;
+	double dlat, dlon;
 	spd = (float)(pvt_box->gSpeed * 0.0036);
 	spdi = (int32_t)(spd);
-	tx_box->lat_cel = (int16_t)pvt_box->lat;
-	tx_box->lat_drob = (uint16_t)((pvt_box->lat - tx_box->lat_cel)*10000000);
-	tx_box->lon_cel = (int16_t)pvt_box->lon;
-	tx_box->lon_drob = (uint16_t)((pvt_box->lon - tx_box->lon_cel)*10000000);
+	//tx_box->lat_cel = (int16_t)pvt_box->lat;
+	//modf(pvt_box->lat, &dlat);
+	tx_box->lat = pvt_box->lat;
+	//tx_box->lat_drob = (uint16_t)((pvt_box->lat - tx_box->lat_cel)*10000000);
+	tx_box->lon = pvt_box->lon;
+	//modf(pvt_box->lon, &dlon);
+	//tx_box->lon_cel = (int16_t)dlon;
+	//tx_box->lon_drob = (uint16_t)((pvt_box->lon - tx_box->lon_cel)*10000000);
 	tx_box->hour = pvt_box->hour;
 	tx_box->min = pvt_box->min;
 	tx_box->sec = pvt_box->sec;
@@ -488,20 +493,22 @@ void send_data(uint8_t stream){
 		    chprintf((BaseSequentialStream*)&SD1, "%d",  tx_box->speed);
 		    chprintf((BaseSequentialStream*)&SD1, "\r\n");
 		*/
-		chprintf((BaseSequentialStream*)&SD1, "%d.%d;%d.%d;%d:%d:%d:%d:%d:%d:\r\n",
-				tx_box->lat_cel, tx_box->lat_drob, tx_box->lon_cel, tx_box->lon_drob, tx_box->hour,
+		chprintf((BaseSequentialStream*)&SD1, "%d;%d;%d:%d:%d:%d:%d:%d:\r\n",
+				tx_box->lat, tx_box->lon, tx_box->hour,
 				tx_box->min, tx_box->sec, tx_box->sat, tx_box->dist, tx_box->speed);
 		chSemSignal(&usart1_semaph);
 //	}else if (stream == OUTPUT_XBEE){
 	//	wdgReset(&WDGD1);
-		databuff[0] = (uint8_t)(tx_box->lat_cel >> 8);
-		databuff[1] = (uint8_t)(tx_box->lat_cel);
-		databuff[2] = (uint8_t)(tx_box->lat_drob >> 8);
-		databuff[3] = (uint8_t)(tx_box->lat_drob);
-		databuff[4] = (uint8_t)(tx_box->lon_cel >> 8);
-		databuff[5] = (uint8_t)(tx_box->lon_cel);
-		databuff[6] = (uint8_t)(tx_box->lon_drob >> 8);
-		databuff[7] = (uint8_t)(tx_box->lon_drob);
+		//memcpy(&tx_box->lat, &databuff[0], sizeof(float));
+		databuff[0] = (uint8_t)(tx_box->lat >> 24);
+		databuff[1] = (uint8_t)(tx_box->lat >> 16 );
+		databuff[2] = (uint8_t)(tx_box->lat >> 8);
+		databuff[3] = (uint8_t)(tx_box->lat);
+		//memcpy(&tx_box->lon, &databuff[4], sizeof(float));
+		databuff[4] = (uint8_t)(tx_box->lon >> 24);
+		databuff[5] = (uint8_t)(tx_box->lon >> 16);
+		databuff[6] = (uint8_t)(tx_box->lon >> 8);
+		databuff[7] = (uint8_t)(tx_box->lon);
 		databuff[8] = tx_box->hour;
 		databuff[9] = tx_box->min;
 		databuff[10] = tx_box->sec;
@@ -711,7 +718,7 @@ int main(void) {
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
-	toggle_test_output();
+	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
