@@ -1007,7 +1007,7 @@
  * PF6  - GPIOF_6                   (input pullup).
  * PF7  - GPIOF_7                   (input pullup).
  * PF8  - RF_868_SLEEP              (output pushpull maximum).
- * PF9  - RF_868_RST                (output pushpull maximum).
+ * PF9  - RF_868_RST                (output open drain).
  * PF10 - GPIOF_10                  (input pullup).
  * PF11 - GPIOF_11                  (input pullup).
  * PF12 - GPIOF_11                  (input pullup).
@@ -1040,7 +1040,7 @@
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_6) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_7) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOF_RF_868_SLEEP) |\
-                                     PIN_OTYPE_PUSHPULL(GPIOF_RF_868_RST) | \
+                                     PIN_OTYPE_OPENDRAIN(GPIOF_RF_868_RST) | \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_10) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_11) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_11) |   \

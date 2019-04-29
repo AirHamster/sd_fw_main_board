@@ -218,7 +218,15 @@ static THD_FUNCTION(xbee_thread, p){
 			chprintf((BaseSequentialStream*)&SD1, "Ping hello message\r\n");
 			chSemSignal(&usart1_semaph);
 			xbee_send_ping_message(xbee);
+			break;
+		case XBEE_GET_CHANNELS:
+			xbee->channels = xbee_read_channels(xbee);
+			chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "Channels settings: %x\r\n", xbee->channels);
+			chSemSignal(&usart1_semaph);
+			break;
 		}
+
 
 		xbee->suspend_state = 1;
 	}
@@ -335,6 +343,54 @@ static THD_FUNCTION(shell_thread, arg) {
 }
 
 /*
+ * Thread that works with UBLOX NINA Bluetooth
+ */
+thread_reference_t bt_trp = NULL;
+static THD_WORKING_AREA(bt_thread_wa, 256);
+static THD_FUNCTION(bt_thread, arg){
+	(void)arg;
+	msg_t msg;
+	chRegSetThreadName("Data output");
+	while (true) {
+		chSysLock();
+		if (output->suspend_state) {
+			msg = chThdSuspendS(&bt_trp);
+		}
+		chSysUnlock();
+	/*	switch (msg){
+		case NINA_GET_DISCOVERABLE:
+			nina_get_discoverable_status();
+			break;
+*/
+		/*	event_listener_t elSerData;
+			eventmask_t flags;
+			chEvtRegisterMask((EventSource *)chnGetEventSource(&SD7), &elSerData, EVENT_MASK(1));
+
+			while (TRUE)
+			{
+				chEvtWaitOneTimeout(EVENT_MASK(1), MS2ST(10));
+				chSysLock();
+				flags = chEvtGetAndClearFlags(&elSerData);
+				chSysUnlock();
+				if (flags & CHN_INPUT_AVAILABLE)
+				{
+					msg_t charbuf;
+					do
+					{
+						charbuf = chnGetTimeout(&SD1, TIME_IMMEDIATE);
+						if ( charbuf != Q_TIMEOUT )
+						{
+							chSequentialStreamPut(&SD1, charbuf);
+						}
+					}
+					while (charbuf != Q_TIMEOUT);
+				}
+			}
+
+		}*/
+	}
+}
+/*
  * Thread that outputs debug data which is needed
  */
 thread_reference_t output_trp = NULL;
@@ -405,7 +461,7 @@ static THD_FUNCTION(output_thread, arg) {
 }
 
 void send_data(uint8_t stream){
-	uint8_t databuff[RF_PACK_LEN];
+	uint8_t databuff[15];
 	int32_t spdi = 0;
 	double spd;
 	spd = (float)(pvt_box->gSpeed * 0.0036);
@@ -453,7 +509,7 @@ void send_data(uint8_t stream){
 		databuff[12] = (uint8_t)(tx_box->dist >> 8);
 		databuff[13] = (uint8_t)(tx_box->dist);
 		databuff[14] = (uint8_t)(tx_box->speed);
-		xbee_send_rf_message(xbee, databuff, RF_PACK_LEN);
+		xbee_send_rf_message(xbee, databuff, 15);
 	//}
 }
 
@@ -595,6 +651,10 @@ int main(void) {
 	chSemWait(&usart1_semaph);
 	chprintf((BaseSequentialStream*)&SD1, "MAG\r\n");
 	chSemSignal(&usart1_semaph);
+
+	palClearLine(LINE_RF_868_RST);
+	chThdSleepMilliseconds(100);
+	palSetLine(LINE_RF_868_RST);
 	  /*
 	   * Starting the watchdog driver.
 	   */
@@ -643,12 +703,15 @@ int main(void) {
 	chSemWait(&usart1_semaph);
 		chprintf((BaseSequentialStream*)&SD1, "tims\r\n");
 		chSemSignal(&usart1_semaph);
+
+		xbee_get_attn_pin_cfg(xbee);
+		chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?");
 //	chThdSleepMilliseconds(3000);
 		// configure the timer to fire after 25 timer clock tics
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
-
-	//toggle_test_output();
+		chThdSleepMilliseconds(1000);
+	toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
