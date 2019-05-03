@@ -92,7 +92,7 @@ static GPTConfig gpt12cfg =
 
 static GPTConfig gpt11cfg =
 {
-		20000,      // Timer clock
+		25600,      // Timer clock
 		gpt11cb,        // Callback function
 		0,
 		0
@@ -276,7 +276,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	chRegSetThreadName("MPU9250 Thread");
 	gptStop(&GPTD11);
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 50);
+	gptStartContinuous(&GPTD11, 500);
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -430,12 +430,12 @@ static THD_FUNCTION(output_thread, arg) {
 				spdi = (int32_t)(spd);
 				chSemWait(&usart1_semaph);
 				//chprintf((BaseSequentialStream*)&SD1, "GPS output\n\r");
-				chprintf((BaseSequentialStream*)&SD1, "%s;", lat);
-				chprintf((BaseSequentialStream*)&SD1, "%s;", lon);
-				chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->hour);
-				chprintf((BaseSequentialStream*)&SD1, "%d:", pvt_box->min);
-				chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->sec);
-				chprintf((BaseSequentialStream*)&SD1, "%d;", pvt_box->numSV);
+				chprintf((BaseSequentialStream*)&SD1, "%s,", lat);
+				chprintf((BaseSequentialStream*)&SD1, "%s,", lon);
+				chprintf((BaseSequentialStream*)&SD1, "%d,", pvt_box->hour);
+				chprintf((BaseSequentialStream*)&SD1, "%d,", pvt_box->min);
+				chprintf((BaseSequentialStream*)&SD1, "%d,", pvt_box->sec);
+				chprintf((BaseSequentialStream*)&SD1, "%d,", pvt_box->numSV);
 				chprintf((BaseSequentialStream*)&SD1, "%d",  spdi);
 				chprintf((BaseSequentialStream*)&SD1, "\r\n");
 				chSemSignal(&usart1_semaph);
