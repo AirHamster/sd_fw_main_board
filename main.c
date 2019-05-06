@@ -276,7 +276,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	chRegSetThreadName("MPU9250 Thread");
 	gptStop(&GPTD11);
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 500);
+	gptStartContinuous(&GPTD11, 50);
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -287,7 +287,6 @@ static THD_FUNCTION(mpu_thread, arg) {
 		case MPU_GET_GYRO_DATA:
 
 			mpu_get_gyro_data();
-
 			break;
 		}
 	}
@@ -461,7 +460,7 @@ static THD_FUNCTION(output_thread, arg) {
 }
 
 void send_data(uint8_t stream){
-	uint8_t databuff[15];
+	uint8_t databuff[16];
 	int32_t spdi = 0;
 	double spd;
 	double dlat, dlon;
@@ -500,23 +499,24 @@ void send_data(uint8_t stream){
 //	}else if (stream == OUTPUT_XBEE){
 	//	wdgReset(&WDGD1);
 		//memcpy(&tx_box->lat, &databuff[0], sizeof(float));
-		databuff[0] = (uint8_t)(tx_box->lat >> 24);
-		databuff[1] = (uint8_t)(tx_box->lat >> 16 );
-		databuff[2] = (uint8_t)(tx_box->lat >> 8);
-		databuff[3] = (uint8_t)(tx_box->lat);
+		databuff[0] = RF_GPS_PACKET;
+		databuff[1] = (uint8_t)(tx_box->lat >> 24);
+		databuff[2] = (uint8_t)(tx_box->lat >> 16 );
+		databuff[3] = (uint8_t)(tx_box->lat >> 8);
+		databuff[4] = (uint8_t)(tx_box->lat);
 		//memcpy(&tx_box->lon, &databuff[4], sizeof(float));
-		databuff[4] = (uint8_t)(tx_box->lon >> 24);
-		databuff[5] = (uint8_t)(tx_box->lon >> 16);
-		databuff[6] = (uint8_t)(tx_box->lon >> 8);
-		databuff[7] = (uint8_t)(tx_box->lon);
-		databuff[8] = tx_box->hour;
-		databuff[9] = tx_box->min;
-		databuff[10] = tx_box->sec;
-		databuff[11] = tx_box->sat;
-		databuff[12] = (uint8_t)(tx_box->dist >> 8);
-		databuff[13] = (uint8_t)(tx_box->dist);
-		databuff[14] = (uint8_t)(tx_box->speed);
-		xbee_send_rf_message(xbee, databuff, 15);
+		databuff[5] = (uint8_t)(tx_box->lon >> 24);
+		databuff[6] = (uint8_t)(tx_box->lon >> 16);
+		databuff[7] = (uint8_t)(tx_box->lon >> 8);
+		databuff[8] = (uint8_t)(tx_box->lon);
+		databuff[9] = tx_box->hour;
+		databuff[10] = tx_box->min;
+		databuff[11] = tx_box->sec;
+		databuff[12] = tx_box->sat;
+		databuff[13] = (uint8_t)(tx_box->dist >> 8);
+		databuff[14] = (uint8_t)(tx_box->dist);
+		databuff[15] = (uint8_t)(tx_box->speed);
+		xbee_send_rf_message(xbee, databuff, 16);
 	//}
 }
 
@@ -652,6 +652,7 @@ int main(void) {
 	output->suspend_state = 1;
 	xbee->suspend_state = 1;
 	xbee->poll_suspend_state = 1;
+	xbee->tx_ready = 1;
 	neo->suspend_state = 1;
 	mpu->suspend_state = 1;
 
@@ -703,6 +704,7 @@ int main(void) {
 			chThdSleepMilliseconds(50);
 			neo_poll();
 			chThdSleepMilliseconds(50);
+
 		chSemWait(&usart1_semaph);
 			chprintf((BaseSequentialStream*)&SD1, "neo\r\n");
 			chSemSignal(&usart1_semaph);
@@ -718,7 +720,7 @@ int main(void) {
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
-	//toggle_test_output();
+	toggle_gyro_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
