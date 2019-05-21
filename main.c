@@ -158,7 +158,7 @@ static THD_FUNCTION(xbee_poll_thread, p){
 		}
 		chSysUnlock();
 		//palToggleLine(LINE_RED_LED);
-		if(!palReadLine(LINE_RF_868_SPI_ATTN)){
+		while(!palReadLine(LINE_RF_868_SPI_ATTN)){
 			xbee_polling();
 		}
 	}
@@ -481,7 +481,7 @@ void send_data(uint8_t stream){
 	tx_box->sat = pvt_box->numSV;
 	tx_box->speed = spdi;
 	//if(stream == OUTPUT_USART){
-		chSemWait(&usart1_semaph);
+		//chSemWait(&usart1_semaph);
 	/*	chprintf((BaseSequentialStream*)&SD1, "%d.%d;", tx_box->lat_cel, tx_box->lat_drob);
 		    chprintf((BaseSequentialStream*)&SD1, "%d.%d;", tx_box->lon_cel, tx_box->lon_drob);
 		    chprintf((BaseSequentialStream*)&SD1, "%d:", tx_box->hour);
@@ -492,10 +492,10 @@ void send_data(uint8_t stream){
 		    chprintf((BaseSequentialStream*)&SD1, "%d",  tx_box->speed);
 		    chprintf((BaseSequentialStream*)&SD1, "\r\n");
 		*/
-		chprintf((BaseSequentialStream*)&SD1, "%d;%d;%d:%d:%d:%d:%d:%d:\r\n",
-				tx_box->lat, tx_box->lon, tx_box->hour,
-				tx_box->min, tx_box->sec, tx_box->sat, tx_box->dist, tx_box->speed);
-		chSemSignal(&usart1_semaph);
+	//	chprintf((BaseSequentialStream*)&SD1, "%d;%d;%d:%d:%d:%d:%d:%d:\r\n",
+		//		tx_box->lat, tx_box->lon, tx_box->hour,
+		//		tx_box->min, tx_box->sec, tx_box->sat, tx_box->dist, tx_box->speed);
+		//chSemSignal(&usart1_semaph);
 //	}else if (stream == OUTPUT_XBEE){
 	//	wdgReset(&WDGD1);
 		//memcpy(&tx_box->lat, &databuff[0], sizeof(float));
@@ -720,7 +720,7 @@ int main(void) {
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
-	toggle_gyro_output();
+	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
