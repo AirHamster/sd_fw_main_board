@@ -607,6 +607,8 @@ void _unhandled_exception(void) {
  */
 int main(void) {
 	thread_t *sh = NULL;
+	float mag_offset[3];
+	float mag_scaling[3];
 	/*
 	 * System initializations.
 	 * - HAL initialization, this also initializes the configured device drivers
@@ -720,6 +722,7 @@ int main(void) {
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
+		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
 	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
