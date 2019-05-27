@@ -42,6 +42,7 @@ extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
 extern float calib[];
+extern const I2CConfig i2ccfg;
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 
@@ -276,7 +277,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	chRegSetThreadName("MPU9250 Thread");
 	gptStop(&GPTD11);
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 50);
+	gptStartContinuous(&GPTD11, 80);
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -445,10 +446,14 @@ static THD_FUNCTION(output_thread, arg) {
 				chSemSignal(&usart1_semaph);
 			}else if (output->gyro){
 				chSemWait(&usart1_semaph);
-				chprintf((BaseSequentialStream*)&SD1, "AX: %d, AY: %d, AZ: %d  GX: %d, GY: %d, GZ: %d  MX: %d, MY: %d, MZ: %d\r\n",
+				/*chprintf((BaseSequentialStream*)&SD1, "AX: %d, AY: %d, AZ: %d  GX: %d, GY: %d, GZ: %d  MX: %d, MY: %d, MZ: %d\r\n",
 						mpu->accelCount[0], mpu->accelCount[1], mpu->accelCount[2],
 						mpu->gyroCount[0], mpu->gyroCount[1], mpu->gyroCount[2],
-						mpu->magCount[0], mpu->magCount[1], mpu->magCount[2]);
+						mpu->magCount[0], mpu->magCount[1], mpu->magCount[2]);*/
+				chprintf((BaseSequentialStream*)&SD1, "AX: %f, AY: %f, AZ: %f  GX: %f, GY: %f, GZ: %f  MX: %f, MY: %f, MZ: %f\r\n",
+										mpu->ax, mpu->ay, mpu->az,
+										mpu->gx, mpu->gy, mpu->gz,
+										mpu->mx, mpu->my, mpu->mz);
 				chSemSignal(&usart1_semaph);
 			}else if(output->xbee){
 				send_data(OUTPUT_XBEE);
@@ -626,7 +631,7 @@ int main(void) {
 
 	spiStart(&SPID1, &spi1_cfg);
 	spiStart(&SPID2, &neo_spi_cfg);
-
+	i2cStart(&I2CD1, &i2ccfg);
 	xbee->suspend_state = 1;
 
 	/*
@@ -707,23 +712,25 @@ int main(void) {
 			neo_poll();
 			chThdSleepMilliseconds(50);
 
-		chSemWait(&usart1_semaph);
-			chprintf((BaseSequentialStream*)&SD1, "neo\r\n");
-			chSemSignal(&usart1_semaph);
 
-	chSemWait(&usart1_semaph);
-		chprintf((BaseSequentialStream*)&SD1, "tims\r\n");
-		chSemSignal(&usart1_semaph);
-
-		xbee_get_attn_pin_cfg(xbee);
+	//	xbee_get_attn_pin_cfg(xbee);
 		chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?");
+
+		xbee_set_10kbs_rate();
+		eeprom_write_hw_version();
+		chThdSleepMilliseconds(100);
+		eeprom_read_hw_version();
+		//xbee_read_baudrate(xbee);
+		chThdSleepMilliseconds(100);
+	//	xbee_read_channels(xbee);
 //	chThdSleepMilliseconds(3000);
 		// configure the timer to fire after 25 timer clock tics
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
 		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
-	//toggle_test_output();
+		//toggle_test_output();
+		toggle_ypr_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
