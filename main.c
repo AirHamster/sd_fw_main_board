@@ -277,7 +277,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	chRegSetThreadName("MPU9250 Thread");
 	gptStop(&GPTD11);
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 80);
+	gptStartContinuous(&GPTD11, 40);
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -443,6 +443,7 @@ static THD_FUNCTION(output_thread, arg) {
 				chSemWait(&usart1_semaph);
 				chprintf((BaseSequentialStream*)&SD1, "Yaw: %f, Pitch: %f, Roll: %f\n\r",
 						mpu->yaw, mpu->pitch, mpu->roll);
+				//chprintf((BaseSequentialStream*)&SD1, "%f;%f;%f\n\r", mpu->mx, mpu->my, mpu->mz);
 				chSemSignal(&usart1_semaph);
 			}else if (output->gyro){
 				chSemWait(&usart1_semaph);
@@ -647,7 +648,7 @@ int main(void) {
 	sdStart(&SD1, NULL);
 #endif
 	sdStart(&SD7, &sd7cfg);
-
+	chprintf((BaseSequentialStream*)&SD7, "AT+CPWROFF\r");
 	mpu9250_init();
 
 	chThdSleepMilliseconds(100);
@@ -714,7 +715,9 @@ int main(void) {
 
 
 	//	xbee_get_attn_pin_cfg(xbee);
-		chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?");
+
+		chThdSleepMilliseconds(300);
+		chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?\r");
 
 		xbee_set_10kbs_rate();
 		eeprom_write_hw_version();
