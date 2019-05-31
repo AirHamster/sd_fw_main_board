@@ -27,6 +27,7 @@
 #include "chprintf.h"
 #include "neo-m8.h"
 
+#define TRAINER_MODULE	1
 
 uint8_t payload[256];
 extern ubx_nav_pvt_t *pvt_box;
@@ -244,8 +245,10 @@ static THD_FUNCTION(coords_thread, arg) {
 	msg_t msg;
 	chRegSetThreadName("GPS Parse");
 	gptStop(&GPTD12);
+#ifndef TRAINER_MODULE
 	gptStart(&GPTD12, &gpt12cfg);
 	gptStartContinuous(&GPTD12, 5000);
+#endif
 	while (true) {
 		chSysLock();
 		if (neo->suspend_state) {
@@ -276,8 +279,10 @@ static THD_FUNCTION(mpu_thread, arg) {
 	msg_t msg;
 	chRegSetThreadName("MPU9250 Thread");
 	gptStop(&GPTD11);
+#ifndef TRAINER_MODULE
 	gptStart(&GPTD11, &gpt11cfg);
 	gptStartContinuous(&GPTD11, 40);
+#endif
 	while (true) {
 		chSysLock();
 		if (mpu->suspend_state) {
@@ -350,7 +355,7 @@ static THD_WORKING_AREA(bt_thread_wa, 256);
 static THD_FUNCTION(bt_thread, arg){
 	(void)arg;
 	msg_t msg;
-	chRegSetThreadName("Data output");
+	chRegSetThreadName("BT Thd");
 	while (true) {
 		chSysLock();
 		if (output->suspend_state) {
@@ -466,7 +471,7 @@ static THD_FUNCTION(output_thread, arg) {
 }
 
 void send_data(uint8_t stream){
-	uint8_t databuff[16];
+	uint8_t databuff[23];
 	int32_t spdi = 0;
 	double spd;
 	double dlat, dlon;
@@ -522,7 +527,14 @@ void send_data(uint8_t stream){
 		databuff[13] = (uint8_t)(tx_box->dist >> 8);
 		databuff[14] = (uint8_t)(tx_box->dist);
 		databuff[15] = (uint8_t)(tx_box->speed);
-		xbee_send_rf_message(xbee, databuff, 16);
+		databuff[16] = (uint8_t)(tx_box->yaw >> 8);
+		databuff[17] = (uint8_t)(tx_box->yaw);
+		databuff[18] = (uint8_t)(tx_box->pitch >> 8);
+		databuff[19] = (uint8_t)(tx_box->pitch);
+		databuff[20] = (uint8_t)(tx_box->roll >> 8);
+		databuff[21] = (uint8_t)(tx_box->roll);
+		databuff[22] = tx_box->bat;
+		xbee_send_rf_message(xbee, databuff, 23);
 	//}
 }
 
@@ -664,10 +676,6 @@ int main(void) {
 	neo->suspend_state = 1;
 	mpu->suspend_state = 1;
 
-	chSemWait(&usart1_semaph);
-	chprintf((BaseSequentialStream*)&SD1, "MAG\r\n");
-	chSemSignal(&usart1_semaph);
-
 	palClearLine(LINE_RF_868_RST);
 	chThdSleepMilliseconds(100);
 	palSetLine(LINE_RF_868_RST);
@@ -697,10 +705,10 @@ int main(void) {
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
-	chSemWait(&usart1_semaph);
+/*	chSemWait(&usart1_semaph);
 		chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
 		chSemSignal(&usart1_semaph);
-
+*/
 	neo_switch_to_ubx();
 		chThdSleepMilliseconds(50);
 		neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
@@ -732,8 +740,8 @@ int main(void) {
 	//   so 200,000 / 25 = 8,000Hz
 		chThdSleepMilliseconds(1000);
 		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
-		//toggle_test_output();
-		toggle_ypr_output();
+		toggle_test_output();
+		//toggle_ypr_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
