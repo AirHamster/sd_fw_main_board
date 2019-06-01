@@ -27,12 +27,14 @@
 #include "chprintf.h"
 #include "neo-m8.h"
 
-#define TRAINER_MODULE	1
+//#define TRAINER_MODULE
 
 uint8_t payload[256];
+uint8_t read_pvt = 1;
 extern ubx_nav_pvt_t *pvt_box;
 extern ubx_cfg_rate_t *rate_box;
 extern ubx_cfg_nav5_t *nav5_box;
+extern ubx_cfg_odo_t *cfg_odo_box;
 extern ubx_nav_odo_t *odo_box;
 extern xbee_struct_t *xbee;
 extern neo_struct_t *neo;
@@ -126,7 +128,7 @@ const SPIConfig neo_spi_cfg = {
 		NULL,
 		GPIOC,
 		GPIOC_MCU_CS,
-		SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
+		SPI_CR1_BR_1 | SPI_CR1_BR_0,
 		//0,
 		0
 };
@@ -247,7 +249,7 @@ static THD_FUNCTION(coords_thread, arg) {
 	gptStop(&GPTD12);
 #ifndef TRAINER_MODULE
 	gptStart(&GPTD12, &gpt12cfg);
-	gptStartContinuous(&GPTD12, 5000);
+	gptStartContinuous(&GPTD12, 10000);
 #endif
 	while (true) {
 		chSysLock();
@@ -255,13 +257,23 @@ static THD_FUNCTION(coords_thread, arg) {
 			msg = chThdSuspendS(&coords_trp);
 		}
 		chSysUnlock();
-		//chThdSleepMilliseconds(150);
-		neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
-		chThdSleepMilliseconds(50);
-		neo_poll();
-		neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_ODO_ID);
-		chThdSleepMilliseconds(50);
-		neo_poll();
+		if (read_pvt == 1){
+			chSemWait(&spi2_semaph);
+			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
+					//chThdSleepMilliseconds(50);
+					neo_poll();
+					chSemSignal(&spi2_semaph);
+					read_pvt = 0;
+		}else{
+			chSemWait(&spi2_semaph);
+			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_ODO_ID);
+					//chThdSleepMilliseconds(50);
+					neo_poll();
+					chSemSignal(&spi2_semaph);
+					read_pvt = 1;
+		}
+		chThdSleepMilliseconds(25);
+
 		palToggleLine(LINE_RED_LED);
 		neo->suspend_state = 1;
 
@@ -281,7 +293,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	gptStop(&GPTD11);
 #ifndef TRAINER_MODULE
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 40);
+	gptStartContinuous(&GPTD11, 200);
 #endif
 	while (true) {
 		chSysLock();
@@ -584,7 +596,7 @@ void init_modules(void){
 
 
 	chThdSleepMilliseconds(50);
-	neo_set_pvt_1hz();
+	//neo_set_pvt_1hz();
 	chThdSleepMilliseconds(50);
 	neo_poll();
 	chThdSleepMilliseconds(50);
@@ -625,8 +637,8 @@ void _unhandled_exception(void) {
  */
 int main(void) {
 	thread_t *sh = NULL;
-	float mag_offset[3];
 	float mag_scaling[3];
+	float mag_offset[3];
 	/*
 	 * System initializations.
 	 * - HAL initialization, this also initializes the configured device drivers
@@ -644,7 +656,7 @@ int main(void) {
 
 	spiStart(&SPID1, &spi1_cfg);
 	spiStart(&SPID2, &neo_spi_cfg);
-	i2cStart(&I2CD1, &i2ccfg);
+	//i2cStart(&I2CD1, &i2ccfg);
 	xbee->suspend_state = 1;
 
 	/*
@@ -659,14 +671,17 @@ int main(void) {
 #else
 	sdStart(&SD1, NULL);
 #endif
-	sdStart(&SD7, &sd7cfg);
-	chprintf((BaseSequentialStream*)&SD7, "AT+CPWROFF\r");
+	//sdStart(&SD7, &sd7cfg);
+	//chprintf((BaseSequentialStream*)&SD7, "AT+CPWROFF\r");
 	mpu9250_init();
 
 	chThdSleepMilliseconds(100);
 
 
 	initAK8963(&mpu->magCalibration[0]);
+	chSemWait(&usart1_semaph);
+			chprintf((BaseSequentialStream*)&SD1, "MPU\r\n");
+			chSemSignal(&usart1_semaph);
 
 
 	output->suspend_state = 1;
@@ -694,21 +709,47 @@ int main(void) {
 	/*
 	 * Creates threads.
 	 */
+	chSemWait(&usart1_semaph);
+		chprintf((BaseSequentialStream*)&SD1, "THD\r\n");
+		chSemSignal(&usart1_semaph);
+
+		neo_switch_to_ubx();
+				chThdSleepMilliseconds(50);
+			//	neo_set_pvt_1hz();
+					chThdSleepMilliseconds(50);
+				neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
+					chThdSleepMilliseconds(50);
+					neo_poll();
+					rate_box->measRate = 250;
+					chThdSleepMilliseconds(50);
+					neo_write_struct((uint8_t *)rate_box, UBX_CFG_CLASS, UBX_CFG_RATE_ID, sizeof(ubx_cfg_rate_t));
+					chThdSleepMilliseconds(50);
+					neo_poll();
+					chThdSleepMilliseconds(50);
+
+					neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_ODO_ID);
+					chThdSleepMilliseconds(50);
+					neo_poll();
+					cfg_odo_box->flags = 1 << 0;
+					chThdSleepMilliseconds(50);
+					neo_write_struct((uint8_t *)cfg_odo_box, UBX_CFG_CLASS, UBX_CFG_ODO_ID, sizeof(ubx_cfg_odo_t));
+					chThdSleepMilliseconds(50);
+					neo_poll();
 
 	chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
 	chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 6, xbee_poll_thread, NULL);
 	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 10, mpu_thread, NULL);
+	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
 
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
-/*	chSemWait(&usart1_semaph);
+	chSemWait(&usart1_semaph);
 		chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
 		chSemSignal(&usart1_semaph);
-*/
+/*
 	neo_switch_to_ubx();
 		chThdSleepMilliseconds(50);
 		neo_create_poll_request(UBX_CFG_CLASS, UBX_CFG_RATE_ID);
@@ -720,28 +761,29 @@ int main(void) {
 			chThdSleepMilliseconds(50);
 			neo_poll();
 			chThdSleepMilliseconds(50);
-
+*/
 
 	//	xbee_get_attn_pin_cfg(xbee);
 
-		chThdSleepMilliseconds(300);
-		chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?\r");
+	//	chThdSleepMilliseconds(300);
+	//	chprintf((BaseSequentialStream*)&SD7, "AT+UBTDM?\r");
 
 		xbee_set_10kbs_rate();
-		eeprom_write_hw_version();
+		//eeprom_write_hw_version();
 		chThdSleepMilliseconds(100);
-		eeprom_read_hw_version();
+		//eeprom_read_hw_version();
 		//xbee_read_baudrate(xbee);
-		chThdSleepMilliseconds(100);
+		//chThdSleepMilliseconds(100);
 	//	xbee_read_channels(xbee);
 //	chThdSleepMilliseconds(3000);
 		// configure the timer to fire after 25 timer clock tics
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
-		chThdSleepMilliseconds(1000);
+		//chThdSleepMilliseconds(1000);
 		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
 		toggle_test_output();
 		//toggle_ypr_output();
+		//toggle_gyro_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing except
 	 * sleeping in a loop and check the button state.
