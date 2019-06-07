@@ -750,10 +750,10 @@
         Alternate="0" />
       <pin9
         ID="RF_868_RST"
-        Type="PushPull"
+        Type="OpenDrain"
         Level="High"
         Speed="Maximum"
-        Resistor="PullUp"
+        Resistor="PullDown"
         Mode="Output"
         Alternate="0" />
       <pin10

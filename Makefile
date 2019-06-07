@@ -5,7 +5,7 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -O0 -g -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
@@ -64,9 +64,9 @@ ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
   USE_EXCEPTIONS_STACKSIZE = 0x400
 endif
 
-# Enables the use of FPU (no, softfp, hard).
+ # Enables the use of FPU (no, softfp, hard).
 ifeq ($(USE_FPU),)
-  USE_FPU = softfp
+  USE_FPU = no
 endif
 
 # FPU-related options.
@@ -83,12 +83,17 @@ USE_MPU_9250_MODULE = TRUE
 USE_UBLOX_GPS_MODULE = TRUE
 USE_IRIDIUM_9603_MODULE = FALSE
 USE_XBEE_868_MODULE = TRUE
+USE_EEPROM_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
 
-USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL} -DUSE_SD_SHELL=${USE_SD_SHELL}\
--DUSE_MPU_9250_MODULE=${USE_MPU_9250_MODULE} -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
--DUSE_IRIDIUM_9603_MODULE=${USE_IRIDIUM_9603_MODULE} -DUSE_XBEE_868_MODULE=${USE_XBEE_868_MODULE}\
--DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE} -DCHPRINTF_USE_FLOAT=TRUE
+USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL}\
+-DUSE_MPU_9250_MODULE=${USE_MPU_9250_MODULE}\
+-DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
+-DUSE_IRIDIUM_9603_MODULE=${USE_IRIDIUM_9603_MODULE}\
+-DUSE_XBEE_868_MODULE=${USE_XBEE_868_MODULE}\
+-DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE}\
+-DUSE_EEPROM_MODULE=${USE_EEPROM_MODULE}\
+-DCHPRINTF_USE_FLOAT=TRUE
 
 
 ##############################################################################
@@ -166,7 +171,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DUSE_SD_SHELL=${USE_SD_SHELL} -DCHPRINTF_USE_FLOAT
 
 # Define ASM defines here
 UADEFS =

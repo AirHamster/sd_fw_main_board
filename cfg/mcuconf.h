@@ -46,7 +46,7 @@
 #define STM32_PLS                           STM32_PLS_LEV0
 #define STM32_BKPRAM_ENABLE                 FALSE
 #define STM32_HSI_ENABLED                   TRUE
-#define STM32_LSI_ENABLED                   FALSE
+#define STM32_LSI_ENABLED                   TRUE
 #define STM32_HSE_ENABLED                   TRUE
 #define STM32_LSE_ENABLED                   TRUE
 #define STM32_CLOCK48_REQUIRED              TRUE
@@ -169,9 +169,9 @@
 #define STM32_GPT_USE_TIM6                  FALSE
 #define STM32_GPT_USE_TIM7                  FALSE
 #define STM32_GPT_USE_TIM8                  FALSE
-#define STM32_GPT_USE_TIM9                  FALSE
-#define STM32_GPT_USE_TIM11                 FALSE
-#define STM32_GPT_USE_TIM12                 FALSE
+#define STM32_GPT_USE_TIM9                  TRUE
+#define STM32_GPT_USE_TIM11                 TRUE
+#define STM32_GPT_USE_TIM12                 TRUE
 #define STM32_GPT_USE_TIM14                 TRUE
 #define STM32_GPT_TIM1_IRQ_PRIORITY         7
 #define STM32_GPT_TIM2_IRQ_PRIORITY         7
@@ -189,7 +189,7 @@
 /*
  * I2C driver system settings.
  */
-#define STM32_I2C_USE_I2C1                  FALSE
+#define STM32_I2C_USE_I2C1                  TRUE
 #define STM32_I2C_USE_I2C2                  FALSE
 #define STM32_I2C_USE_I2C3                  FALSE
 #define STM32_I2C_USE_I2C4                  FALSE
@@ -293,9 +293,9 @@
 #define STM32_SERIAL_USE_UART4              FALSE
 #define STM32_SERIAL_USE_UART5              FALSE
 #define STM32_SERIAL_USE_USART6             FALSE
-#define STM32_SERIAL_USE_UART7              FALSE
+#define STM32_SERIAL_USE_UART7              TRUE
 #define STM32_SERIAL_USE_UART8              FALSE
-#define STM32_SERIAL_USART1_PRIORITY        12
+#define STM32_SERIAL_USART1_PRIORITY        14
 #define STM32_SERIAL_USART2_PRIORITY        12
 #define STM32_SERIAL_USART3_PRIORITY        12
 #define STM32_SERIAL_UART4_PRIORITY         12
