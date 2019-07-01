@@ -260,14 +260,14 @@ static THD_FUNCTION(coords_thread, arg) {
 		if (read_pvt == 1){
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
-					//chThdSleepMilliseconds(50);
+					chThdSleepMilliseconds(5);
 					neo_poll();
 					chSemSignal(&spi2_semaph);
 					read_pvt = 0;
 		}else{
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_ODO_ID);
-					//chThdSleepMilliseconds(50);
+					chThdSleepMilliseconds(5);
 					neo_poll();
 					chSemSignal(&spi2_semaph);
 					read_pvt = 1;
@@ -503,6 +503,8 @@ void send_data(uint8_t stream){
 	tx_box->dist = (uint16_t)odo_box->distance;
 	tx_box->sat = pvt_box->numSV;
 	tx_box->speed = spdi;
+	tx_box->headMot = pvt_box->headMot;
+	tx_box->headVeh = pvt_box->headVeh;
 	//if(stream == OUTPUT_USART){
 		//chSemWait(&usart1_semaph);
 	/*	chprintf((BaseSequentialStream*)&SD1, "%d.%d;", tx_box->lat_cel, tx_box->lat_drob);
@@ -546,7 +548,18 @@ void send_data(uint8_t stream){
 		databuff[20] = (uint8_t)(tx_box->roll >> 8);
 		databuff[21] = (uint8_t)(tx_box->roll);
 		databuff[22] = tx_box->bat;
-		xbee_send_rf_message(xbee, databuff, 23);
+
+		databuff[23] = (uint8_t)(tx_box->headMot >> 24);
+		databuff[24] = (uint8_t)(tx_box->headMot >> 16);
+		databuff[25] = (uint8_t)(tx_box->headMot >> 8);
+		databuff[26] = (uint8_t)(tx_box->headMot);
+
+		databuff[27] = (uint8_t)(tx_box->headVeh >> 24);
+		databuff[28] = (uint8_t)(tx_box->headVeh >> 16);
+		databuff[29] = (uint8_t)(tx_box->headVeh >> 8);
+		databuff[30] = (uint8_t)(tx_box->headVeh);
+
+		xbee_send_rf_message(xbee, databuff, 31);
 	//}
 }
 
