@@ -249,7 +249,7 @@ static THD_FUNCTION(coords_thread, arg) {
 	gptStop(&GPTD12);
 #ifndef TRAINER_MODULE
 	gptStart(&GPTD12, &gpt12cfg);
-	gptStartContinuous(&GPTD12, 10000);
+	gptStartContinuous(&GPTD12, 5000);
 #endif
 	while (true) {
 		chSysLock();
@@ -257,21 +257,21 @@ static THD_FUNCTION(coords_thread, arg) {
 			msg = chThdSuspendS(&coords_trp);
 		}
 		chSysUnlock();
-		if (read_pvt == 1){
+		//if (read_pvt == 1){
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
 					chThdSleepMilliseconds(5);
 					neo_poll();
 					chSemSignal(&spi2_semaph);
 					read_pvt = 0;
-		}else{
+		/*}else{
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_ODO_ID);
 					chThdSleepMilliseconds(5);
 					neo_poll();
 					chSemSignal(&spi2_semaph);
 					read_pvt = 1;
-		}
+		}*/
 		chThdSleepMilliseconds(25);
 
 		palToggleLine(LINE_RED_LED);
@@ -483,7 +483,7 @@ static THD_FUNCTION(output_thread, arg) {
 }
 
 void send_data(uint8_t stream){
-	uint8_t databuff[23];
+	uint8_t databuff[34];
 	int32_t spdi = 0;
 	double spd;
 	double dlat, dlon;
@@ -502,7 +502,7 @@ void send_data(uint8_t stream){
 	tx_box->sec = pvt_box->sec;
 	tx_box->dist = (uint16_t)odo_box->distance;
 	tx_box->sat = pvt_box->numSV;
-	tx_box->speed = spdi;
+	tx_box->speed = spd;
 	tx_box->headMot = pvt_box->headMot;
 	tx_box->headVeh = pvt_box->headVeh;
 	//if(stream == OUTPUT_USART){
@@ -540,26 +540,43 @@ void send_data(uint8_t stream){
 		databuff[12] = tx_box->sat;
 		databuff[13] = (uint8_t)(tx_box->dist >> 8);
 		databuff[14] = (uint8_t)(tx_box->dist);
-		databuff[15] = (uint8_t)(tx_box->speed);
-		databuff[16] = (uint8_t)(tx_box->yaw >> 8);
-		databuff[17] = (uint8_t)(tx_box->yaw);
-		databuff[18] = (uint8_t)(tx_box->pitch >> 8);
-		databuff[19] = (uint8_t)(tx_box->pitch);
-		databuff[20] = (uint8_t)(tx_box->roll >> 8);
-		databuff[21] = (uint8_t)(tx_box->roll);
-		databuff[22] = tx_box->bat;
 
-		databuff[23] = (uint8_t)(tx_box->headMot >> 24);
-		databuff[24] = (uint8_t)(tx_box->headMot >> 16);
-		databuff[25] = (uint8_t)(tx_box->headMot >> 8);
-		databuff[26] = (uint8_t)(tx_box->headMot);
+		memcpy(&databuff[15], &tx_box->speed, sizeof(tx_box->speed));
 
+		//databuff[15] = (uint8_t)(tx_box->speed >> 24);
+		//databuff[16] = (uint8_t)(tx_box->speed >> 16);
+		//databuff[17] = (uint8_t)(tx_box->speed >> 8);
+		//databuff[18] = (uint8_t)(tx_box->speed);
+
+		databuff[19] = (uint8_t)(tx_box->yaw >> 8);
+		databuff[20] = (uint8_t)(tx_box->yaw);
+
+		memcpy(&databuff[21], &tx_box->pitch, sizeof(tx_box->pitch));
+		//databuff[21] = (int16_t)(tx_box->pitch);
+		//databuff[22] = (int16_t)(tx_box->pitch * 10 % 10);
+		//databuff[21] = (uint8_t)(tx_box->pitch >> 24);
+		//databuff[22] = (uint8_t)(tx_box->pitch >> 16);
+		//databuff[23] = (uint8_t)(tx_box->pitch >> 8);
+		//databuff[24] = (uint8_t)(tx_box->pitch);
+
+		memcpy(&databuff[25], &tx_box->roll, sizeof(tx_box->roll));
+		//databuff[25] = (uint8_t)(tx_box->roll >> 24);
+		//databuff[26] = (uint8_t)(tx_box->roll >> 16);
+		//databuff[27] = (uint8_t)(tx_box->roll >> 8);
+		//databuff[28] = (uint8_t)(tx_box->roll);
+		databuff[29] = tx_box->bat;
+
+		databuff[30] = (uint8_t)(tx_box->headMot >> 24);
+		databuff[31] = (uint8_t)(tx_box->headMot >> 16);
+		databuff[32] = (uint8_t)(tx_box->headMot >> 8);
+		databuff[33] = (uint8_t)(tx_box->headMot);
+/*
 		databuff[27] = (uint8_t)(tx_box->headVeh >> 24);
 		databuff[28] = (uint8_t)(tx_box->headVeh >> 16);
 		databuff[29] = (uint8_t)(tx_box->headVeh >> 8);
 		databuff[30] = (uint8_t)(tx_box->headVeh);
-
-		xbee_send_rf_message(xbee, databuff, 31);
+*/
+		xbee_send_rf_message(xbee, databuff, 34);
 	//}
 }
 
