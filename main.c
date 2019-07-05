@@ -422,7 +422,7 @@ static THD_FUNCTION(output_thread, arg) {
 	chRegSetThreadName("Data output");
 	gptStop(&GPTD14);
 	gptStart(&GPTD14, &gpt14cfg);
-	gptStartContinuous(&GPTD14, 5000);
+	gptStartContinuous(&GPTD14, 2000);
 	while (true) {
 		chSysLock();
 		if (output->suspend_state) {
