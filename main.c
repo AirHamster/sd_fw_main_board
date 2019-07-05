@@ -54,7 +54,7 @@ static void gpt9cb(GPTDriver *gptp);
 static void gpt11cb(GPTDriver *gptp);
 static void gpt12cb(GPTDriver *gptp);
 static void gpt14cb(GPTDriver *gptp);
-
+float mag_offset[3];
 void insert_dot(char *str){
 	uint8_t str2[20];
 	str2[0] = str[0];
@@ -541,7 +541,8 @@ void send_data(uint8_t stream){
 		databuff[13] = (uint8_t)(tx_box->dist >> 8);
 		databuff[14] = (uint8_t)(tx_box->dist);
 
-		memcpy(&databuff[15], &tx_box->speed, sizeof(tx_box->speed));
+		//memcpy(&databuff[15], &tx_box->speed, sizeof(tx_box->speed));
+		memcpy(&databuff[15], &mag_offset[0], sizeof(mag_offset[0]));
 
 		//databuff[15] = (uint8_t)(tx_box->speed >> 24);
 		//databuff[16] = (uint8_t)(tx_box->speed >> 16);
@@ -551,7 +552,7 @@ void send_data(uint8_t stream){
 		databuff[19] = (uint8_t)(tx_box->yaw >> 8);
 		databuff[20] = (uint8_t)(tx_box->yaw);
 
-		memcpy(&databuff[21], &tx_box->pitch, sizeof(tx_box->pitch));
+		memcpy(&databuff[21], &mag_offset[1], sizeof(mag_offset[1]));
 		//databuff[21] = (int16_t)(tx_box->pitch);
 		//databuff[22] = (int16_t)(tx_box->pitch * 10 % 10);
 		//databuff[21] = (uint8_t)(tx_box->pitch >> 24);
@@ -559,7 +560,7 @@ void send_data(uint8_t stream){
 		//databuff[23] = (uint8_t)(tx_box->pitch >> 8);
 		//databuff[24] = (uint8_t)(tx_box->pitch);
 
-		memcpy(&databuff[25], &tx_box->roll, sizeof(tx_box->roll));
+		memcpy(&databuff[25], &mag_offset[2], sizeof(mag_offset[2]));
 		//databuff[25] = (uint8_t)(tx_box->roll >> 24);
 		//databuff[26] = (uint8_t)(tx_box->roll >> 16);
 		//databuff[27] = (uint8_t)(tx_box->roll >> 8);
@@ -668,7 +669,7 @@ void _unhandled_exception(void) {
 int main(void) {
 	thread_t *sh = NULL;
 	float mag_scaling[3];
-	float mag_offset[3];
+
 	/*
 	 * System initializations.
 	 * - HAL initialization, this also initializes the configured device drivers
@@ -707,11 +708,30 @@ int main(void) {
 
 	chThdSleepMilliseconds(100);
 
-
+	mpu->mx = 0.0f;
+	mpu->my = 0.0f;
+	mpu->mz = 0.0f;
 	initAK8963(&mpu->magCalibration[0]);
+	chThdSleepMilliseconds(300);
+	mpu_get_gyro_data();
+	chThdSleepMilliseconds(300);
+	mpu_get_gyro_data();
+
+	while((mpu->mx == 0.0f) && (mpu->my == 0.0f) && (mpu->mz == 0.0f)){
 	chSemWait(&usart1_semaph);
-			chprintf((BaseSequentialStream*)&SD1, "MPU\r\n");
-			chSemSignal(&usart1_semaph);
+	chprintf((BaseSequentialStream*)&SD1, "Looks like magn failed to startup, trying to recover...\r\n");
+	chSemSignal(&usart1_semaph);
+	initAK8963(&mpu->magCalibration[0]);
+	chThdSleepMilliseconds(300);
+	mpu_get_gyro_data();
+	chThdSleepMilliseconds(300);
+	mpu_get_gyro_data();
+	chThdSleepMilliseconds(300);
+	mpu_get_gyro_data();
+	}
+	chSemWait(&usart1_semaph);
+	chprintf((BaseSequentialStream*)&SD1, "Looks like magn starts successfully\r\n");
+	chSemSignal(&usart1_semaph);
 
 
 	output->suspend_state = 1;
@@ -739,9 +759,9 @@ int main(void) {
 	/*
 	 * Creates threads.
 	 */
-	chSemWait(&usart1_semaph);
-		chprintf((BaseSequentialStream*)&SD1, "THD\r\n");
-		chSemSignal(&usart1_semaph);
+//	chSemWait(&usart1_semaph);
+//		chprintf((BaseSequentialStream*)&SD1, "THD\r\n");
+//		chSemSignal(&usart1_semaph);
 
 		neo_switch_to_ubx();
 				chThdSleepMilliseconds(50);
@@ -776,9 +796,9 @@ int main(void) {
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
-	chSemWait(&usart1_semaph);
-		chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
-		chSemSignal(&usart1_semaph);
+//	chSemWait(&usart1_semaph);
+//		chprintf((BaseSequentialStream*)&SD1, "MAG_Calibration: %f, %f, %f\r\n", mpu->magCalibration[0], mpu->magCalibration[1], mpu->magCalibration[2]);
+//		chSemSignal(&usart1_semaph);
 /*
 	neo_switch_to_ubx();
 		chThdSleepMilliseconds(50);
@@ -810,7 +830,12 @@ int main(void) {
 	//   The clock is running at 200,000Hz, so each tick is 50uS,
 	//   so 200,000 / 25 = 8,000Hz
 		//chThdSleepMilliseconds(1000);
-		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
+
+
+		mag_calibration(&mag_offset[0], &mag_scaling[0]);
+		mpu->magbias[0] = mag_offset[0];  // User environmental x-axis correction in milliGauss, should be automatically calculated
+			mpu->magbias[1] = mag_offset[1];  // User environmental x-axis correction in milliGauss
+			mpu->magbias[2] = mag_offset[2];  // User environmental x-axis correction in milliGauss
 		toggle_test_output();
 		//toggle_ypr_output();
 		//toggle_gyro_output();
