@@ -541,8 +541,8 @@ void send_data(uint8_t stream){
 		databuff[13] = (uint8_t)(tx_box->dist >> 8);
 		databuff[14] = (uint8_t)(tx_box->dist);
 
-		//memcpy(&databuff[15], &tx_box->speed, sizeof(tx_box->speed));
-		memcpy(&databuff[15], &mag_offset[0], sizeof(mag_offset[0]));
+		memcpy(&databuff[15], &tx_box->speed, sizeof(tx_box->speed));
+		//memcpy(&databuff[15], &mag_offset[0], sizeof(mag_offset[0]));
 
 		//databuff[15] = (uint8_t)(tx_box->speed >> 24);
 		//databuff[16] = (uint8_t)(tx_box->speed >> 16);
@@ -552,7 +552,8 @@ void send_data(uint8_t stream){
 		databuff[19] = (uint8_t)(tx_box->yaw >> 8);
 		databuff[20] = (uint8_t)(tx_box->yaw);
 
-		memcpy(&databuff[21], &mag_offset[1], sizeof(mag_offset[1]));
+		memcpy(&databuff[21], &tx_box->pitch, sizeof(tx_box->pitch));
+		//memcpy(&databuff[21], &mag_offset[1], sizeof(mag_offset[1]));
 		//databuff[21] = (int16_t)(tx_box->pitch);
 		//databuff[22] = (int16_t)(tx_box->pitch * 10 % 10);
 		//databuff[21] = (uint8_t)(tx_box->pitch >> 24);
@@ -560,7 +561,8 @@ void send_data(uint8_t stream){
 		//databuff[23] = (uint8_t)(tx_box->pitch >> 8);
 		//databuff[24] = (uint8_t)(tx_box->pitch);
 
-		memcpy(&databuff[25], &mag_offset[2], sizeof(mag_offset[2]));
+		//memcpy(&databuff[25], &mag_offset[2], sizeof(mag_offset[2]));
+		memcpy(&databuff[25], &tx_box->roll, sizeof(tx_box->roll));
 		//databuff[25] = (uint8_t)(tx_box->roll >> 24);
 		//databuff[26] = (uint8_t)(tx_box->roll >> 16);
 		//databuff[27] = (uint8_t)(tx_box->roll >> 8);
