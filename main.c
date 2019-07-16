@@ -269,6 +269,7 @@ static THD_FUNCTION(coords_thread, arg) {
 		}
 		chSysUnlock();
 		//if (read_pvt == 1){
+		bno055_read_euler(bno055);
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
 					chThdSleepMilliseconds(5);
@@ -700,7 +701,7 @@ int main(void) {
 
 	spiStart(&SPID1, &spi1_cfg);
 	spiStart(&SPID2, &neo_spi_cfg);
-	i2cStart(&I2C1, i2c1cfg);
+	i2cStart(&I2CD1, &i2c1cfg);
 	//i2cStart(&I2CD1, &i2ccfg);
 	xbee->suspend_state = 1;
 
@@ -805,7 +806,7 @@ int main(void) {
 	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
+	//chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
 
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
@@ -837,9 +838,7 @@ int main(void) {
 		chThdSleepMilliseconds(100);
 		//eeprom_read_hw_version();
 		uint8_t chip_id;
-		bno055_i2c_routine(bno055);
-		bno055_init(bno055);
-	//	bno055_read_chip_id(&chip_id);
+		bno055_full_init(bno055);
 		//xbee_read_baudrate(xbee);
 		//chThdSleepMilliseconds(100);
 	//	xbee_read_channels(xbee);
@@ -850,11 +849,11 @@ int main(void) {
 		//chThdSleepMilliseconds(1000);
 
 
-		mag_calibration(&mag_offset[0], &mag_scaling[0]);
+		//mag_calibration(&mag_offset[0], &mag_scaling[0]);
 		mpu->magbias[0] = mag_offset[0];  // User environmental x-axis correction in milliGauss, should be automatically calculated
 			mpu->magbias[1] = mag_offset[1];  // User environmental x-axis correction in milliGauss
 			mpu->magbias[2] = mag_offset[2];  // User environmental x-axis correction in milliGauss
-		toggle_test_output();
+		//toggle_test_output();
 		//toggle_ypr_output();
 		//toggle_gyro_output();
 	/*
