@@ -26,6 +26,8 @@
 
 #include "chprintf.h"
 #include "neo-m8.h"
+#include "bno055.h"
+#include "bno055_i2c.h"
 
 //#define TRAINER_MODULE
 
@@ -44,6 +46,10 @@ extern tx_box_t *tx_box;
 extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
+
+struct bno055_t bno055_struct;
+struct bno055_t *bno055 = &bno055_struct;
+
 extern float calib[];
 extern const I2CConfig i2ccfg;
 #define MAX_FILLER 11
@@ -73,6 +79,11 @@ void insert_dot(char *str){
   STM32_IWDG_WIN_DISABLED
 };
 */
+static const I2CConfig i2c1cfg = {
+  0x20E7112A,
+  0,
+  0
+};
 static SerialConfig sd7cfg =
 {
 		115200
@@ -689,6 +700,7 @@ int main(void) {
 
 	spiStart(&SPID1, &spi1_cfg);
 	spiStart(&SPID2, &neo_spi_cfg);
+	i2cStart(&I2C1, i2c1cfg);
 	//i2cStart(&I2CD1, &i2ccfg);
 	xbee->suspend_state = 1;
 
@@ -824,6 +836,10 @@ int main(void) {
 		//eeprom_write_hw_version();
 		chThdSleepMilliseconds(100);
 		//eeprom_read_hw_version();
+		uint8_t chip_id;
+		bno055_i2c_routine(bno055);
+		bno055_init(bno055);
+	//	bno055_read_chip_id(&chip_id);
 		//xbee_read_baudrate(xbee);
 		//chThdSleepMilliseconds(100);
 	//	xbee_read_channels(xbee);
