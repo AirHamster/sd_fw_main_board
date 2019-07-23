@@ -47,8 +47,8 @@ extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
 
-struct bno055_t bno055_struct;
-struct bno055_t *bno055 = &bno055_struct;
+bno055_t bno055_struct;
+bno055_t *bno055 = &bno055_struct;
 
 extern float calib[];
 extern const I2CConfig i2ccfg;
@@ -107,7 +107,7 @@ static GPTConfig gpt12cfg =
 
 static GPTConfig gpt11cfg =
 {
-		25600,      // Timer clock
+		20000,      // Timer clock
 		gpt11cb,        // Callback function
 		0,
 		0
@@ -269,7 +269,7 @@ static THD_FUNCTION(coords_thread, arg) {
 		}
 		chSysUnlock();
 		//if (read_pvt == 1){
-		bno055_read_euler(bno055);
+
 			chSemWait(&spi2_semaph);
 			neo_create_poll_request(UBX_NAV_CLASS, UBX_NAV_PVT_ID);
 					chThdSleepMilliseconds(5);
@@ -296,7 +296,7 @@ static THD_FUNCTION(coords_thread, arg) {
  * Thread to process data collection and filtering from MPU9250
  */
 thread_reference_t mpu_trp = NULL;
-static THD_WORKING_AREA(mpu_thread_wa, 512);
+static THD_WORKING_AREA(mpu_thread_wa, 4096);
 static THD_FUNCTION(mpu_thread, arg) {
 
 	(void)arg;
@@ -305,7 +305,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 	gptStop(&GPTD11);
 #ifndef TRAINER_MODULE
 	gptStart(&GPTD11, &gpt11cfg);
-	gptStartContinuous(&GPTD11, 200);
+	gptStartContinuous(&GPTD11, 2000);
 #endif
 	while (true) {
 		chSysLock();
@@ -315,8 +315,9 @@ static THD_FUNCTION(mpu_thread, arg) {
 		chSysUnlock();
 		switch(msg){
 		case MPU_GET_GYRO_DATA:
-
-			mpu_get_gyro_data();
+			bno055_read_euler(bno055);
+			send_json(pvt_box, bno055);
+			//mpu_get_gyro_data();
 			break;
 		}
 	}
@@ -374,6 +375,7 @@ static THD_FUNCTION(shell_thread, arg) {
 /*
  * Thread that works with UBLOX NINA Bluetooth
  */
+/*
 thread_reference_t bt_trp = NULL;
 static THD_WORKING_AREA(bt_thread_wa, 256);
 static THD_FUNCTION(bt_thread, arg){
@@ -386,12 +388,12 @@ static THD_FUNCTION(bt_thread, arg){
 			msg = chThdSuspendS(&bt_trp);
 		}
 		chSysUnlock();
-	/*	switch (msg){
+		switch (msg){
 		case NINA_GET_DISCOVERABLE:
 			nina_get_discoverable_status();
 			break;
-*/
-		/*	event_listener_t elSerData;
+
+			event_listener_t elSerData;
 			eventmask_t flags;
 			chEvtRegisterMask((EventSource *)chnGetEventSource(&SD7), &elSerData, EVENT_MASK(1));
 
@@ -416,9 +418,10 @@ static THD_FUNCTION(bt_thread, arg){
 				}
 			}
 
-		}*/
+		}
 	}
 }
+*/
 /*
  * Thread that outputs debug data which is needed
  */
@@ -593,6 +596,30 @@ void send_data(uint8_t stream){
 */
 		xbee_send_rf_message(xbee, databuff, 34);
 	//}
+}
+
+void send_json(ubx_nav_pvt_t *pvt_box, bno055_t *bno055)
+{
+	chprintf((BaseSequentialStream*)&SD1, "\r\n{\"msg_type\":\"boats_data\",\r\n\t\t\"boat_1\":{\r\n\t\t\t");
+		chprintf((BaseSequentialStream*)&SD1, "\"hour\":%d,\r\n\t\t\t", pvt_box->hour);
+		chprintf((BaseSequentialStream*)&SD1, "\"min\":%d,\r\n\t\t\t", pvt_box->min);
+		chprintf((BaseSequentialStream*)&SD1, "\"sec\":%d,\r\n\t\t\t", pvt_box->sec);
+		chprintf((BaseSequentialStream*)&SD1, "\"lat\":%f,\r\n\t\t\t", pvt_box->lat / 10000000.0f);
+		chprintf((BaseSequentialStream*)&SD1, "\"lon\":%f,\r\n\t\t\t", pvt_box->lon / 10000000.0f);
+		chprintf((BaseSequentialStream*)&SD1, "\"speed\":%f,\r\n\t\t\t", (float)(pvt_box->gSpeed * 0.0036));
+		chprintf((BaseSequentialStream*)&SD1, "\"dist\":%d,\r\n\t\t\t", (uint16_t)odo_box->distance);
+		chprintf((BaseSequentialStream*)&SD1, "\"yaw\":%d,\r\n\t\t\t", (uint16_t)bno055->d_euler_hpr.h);
+		chprintf((BaseSequentialStream*)&SD1, "\"pitch\":%f,\r\n\t\t\t", bno055->d_euler_hpr.p);
+		chprintf((BaseSequentialStream*)&SD1, "\"roll\":%f,\r\n\t\t\t", bno055->d_euler_hpr.r);
+		chprintf((BaseSequentialStream*)&SD1, "\"headMot\":%d,\r\n\t\t\t", (uint16_t)(pvt_box->headMot / 100000));
+		chprintf((BaseSequentialStream*)&SD1, "\"sat\":%d,\r\n\t\t\t", pvt_box->numSV);
+		chprintf((BaseSequentialStream*)&SD1, "\"mag_decl\":%f,\r\n\t\t\t", pvt_box->magDec / 100.0f);
+		chprintf((BaseSequentialStream*)&SD1, "\"rssi\":%d,\r\n\t\t\t", xbee->rssi);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"magn_cal\":%d,\r\n\t\t\t", bno055->magn_cal);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"accel_cal\":%d,\r\n\t\t\t", bno055->accel_cal);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"gyro_cal\":%d,\r\n\t\t\t", bno055->gyro_cal);
+		chprintf((BaseSequentialStream*)&SD1, "\"bat\":0\r\n\t\t\t");
+		chprintf((BaseSequentialStream*)&SD1, "}\r\n\t}");
 }
 
 static void gpt9cb(GPTDriver *gptp){
@@ -806,7 +833,7 @@ int main(void) {
 	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-	//chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
+	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
 
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
