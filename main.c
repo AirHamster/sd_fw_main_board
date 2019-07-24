@@ -613,8 +613,11 @@ void send_json(ubx_nav_pvt_t *pvt_box, bno055_t *bno055)
 		chprintf((BaseSequentialStream*)&SD1, "\"roll\":%f,\r\n\t\t\t", bno055->d_euler_hpr.r);
 		chprintf((BaseSequentialStream*)&SD1, "\"headMot\":%d,\r\n\t\t\t", (uint16_t)(pvt_box->headMot / 100000));
 		chprintf((BaseSequentialStream*)&SD1, "\"sat\":%d,\r\n\t\t\t", pvt_box->numSV);
-		chprintf((BaseSequentialStream*)&SD1, "\"mag_decl\":%f,\r\n\t\t\t", pvt_box->magDec / 100.0f);
+		//chprintf((BaseSequentialStream*)&SD1, "\"mag_decl\":%f,\r\n\t\t\t", pvt_box->magDec / 100.0f);
 		chprintf((BaseSequentialStream*)&SD1, "\"rssi\":%d,\r\n\t\t\t", xbee->rssi);
+		chprintf((BaseSequentialStream*)&SD1, "\"accel_raw\":%d; %d; %d,\r\n\t\t\t", bno055->accel_raw.x, bno055->accel_raw.y, bno055->accel_raw.z);
+		chprintf((BaseSequentialStream*)&SD1, "\"gyro_raw\":%d; %d; %d,\r\n\t\t\t", bno055->gyro_raw.x, bno055->gyro_raw.y, bno055->gyro_raw.z);
+		chprintf((BaseSequentialStream*)&SD1, "\"magn_raw\":%d; %d; %d,\r\n\t\t\t", bno055->mag_raw.x, bno055->mag_raw.y, bno055->mag_raw.z);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"magn_cal\":%d,\r\n\t\t\t", bno055->magn_cal);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"accel_cal\":%d,\r\n\t\t\t", bno055->accel_cal);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"gyro_cal\":%d,\r\n\t\t\t", bno055->gyro_cal);
@@ -786,6 +789,9 @@ int main(void) {
 	palClearLine(LINE_RF_868_RST);
 	chThdSleepMilliseconds(100);
 	palSetLine(LINE_RF_868_RST);
+
+	uint8_t chip_id;
+	bno055_full_init(bno055);
 	  /*
 	   * Starting the watchdog driver.
 	   */
@@ -864,8 +870,7 @@ int main(void) {
 		//eeprom_write_hw_version();
 		chThdSleepMilliseconds(100);
 		//eeprom_read_hw_version();
-		uint8_t chip_id;
-		bno055_full_init(bno055);
+
 		//xbee_read_baudrate(xbee);
 		//chThdSleepMilliseconds(100);
 	//	xbee_read_channels(xbee);
