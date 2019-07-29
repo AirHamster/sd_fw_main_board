@@ -30,7 +30,26 @@
 #include "bno055_i2c.h"
 
 //#define TRAINER_MODULE
+/**
+ * Executes the BKPT instruction that causes the debugger to stop.
+ * If no debugger is attached, this will be ignored
+ */
+#define bkpt() __asm volatile("BKPT #0\n")
 
+void NMI_Handler(void) {
+    //TODO
+    while(1);
+}
+
+//See http://infocenter.arm.com/help/topic/com.arm.doc.dui0552a/BABBGBEC.html
+typedef enum  {
+    Reset = 1,
+    NMI = 2,
+    HardFault = 3,
+    MemManage = 4,
+    BusFault = 5,
+    UsageFault = 6,
+} FaultType;
 uint8_t payload[256];
 uint8_t read_pvt = 1;
 extern ubx_nav_pvt_t *pvt_box;
@@ -79,11 +98,12 @@ void insert_dot(char *str){
   STM32_IWDG_WIN_DISABLED
 };
 */
-static const I2CConfig i2c1cfg = {
+const I2CConfig i2c1cfg = {
   0x20E7112A,
   0,
   0
 };
+
 static SerialConfig sd7cfg =
 {
 		115200
@@ -615,9 +635,9 @@ void send_json(ubx_nav_pvt_t *pvt_box, bno055_t *bno055)
 		chprintf((BaseSequentialStream*)&SD1, "\"sat\":%d,\r\n\t\t\t", pvt_box->numSV);
 		//chprintf((BaseSequentialStream*)&SD1, "\"mag_decl\":%f,\r\n\t\t\t", pvt_box->magDec / 100.0f);
 		chprintf((BaseSequentialStream*)&SD1, "\"rssi\":%d,\r\n\t\t\t", xbee->rssi);
-		chprintf((BaseSequentialStream*)&SD1, "\"accel_raw\":%d; %d; %d,\r\n\t\t\t", bno055->accel_raw.x, bno055->accel_raw.y, bno055->accel_raw.z);
-		chprintf((BaseSequentialStream*)&SD1, "\"gyro_raw\":%d; %d; %d,\r\n\t\t\t", bno055->gyro_raw.x, bno055->gyro_raw.y, bno055->gyro_raw.z);
-		chprintf((BaseSequentialStream*)&SD1, "\"magn_raw\":%d; %d; %d,\r\n\t\t\t", bno055->mag_raw.x, bno055->mag_raw.y, bno055->mag_raw.z);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"accel_raw\":%d; %d; %d,\r\n\t\t\t", bno055->accel_raw.x, bno055->accel_raw.y, bno055->accel_raw.z);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"gyro_raw\":%d; %d; %d,\r\n\t\t\t", bno055->gyro_raw.x, bno055->gyro_raw.y, bno055->gyro_raw.z);
+	//	chprintf((BaseSequentialStream*)&SD1, "\"magn_raw\":%d; %d; %d,\r\n\t\t\t", bno055->mag_raw.x, bno055->mag_raw.y, bno055->mag_raw.z);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"magn_cal\":%d,\r\n\t\t\t", bno055->magn_cal);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"accel_cal\":%d,\r\n\t\t\t", bno055->accel_cal);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"gyro_cal\":%d,\r\n\t\t\t", bno055->gyro_cal);
@@ -703,8 +723,32 @@ void init_modules(void){
 
 extern void chSysHalt(const char*);
 void _unhandled_exception(void) {
-  //chSysHalt("UNDEFINED IRQ");
-	return;
+	//Copy to local variables (not pointers) to allow GDB "i loc" to directly show the info
+	    //Get thread context. Contains main registers including PC and LR
+	    struct port_extctx ctx;
+	    memcpy(&ctx, (void*)__get_PSP(), sizeof(struct port_extctx));
+	    (void)ctx;
+	    //Interrupt status register: Which interrupt have we encountered, e.g. HardFault?
+	    FaultType faultType = (FaultType)__get_IPSR();
+	    (void)faultType;
+	    //For HardFault/BusFault this is the address that was accessed causing the error
+	    uint32_t faultAddress = SCB->BFAR;
+	    (void)faultAddress;
+	    //Flags about hardfault / busfault
+	    //See http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0552a/Cihdjcfc.html for reference
+	    bool isFaultPrecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 1) ? true : false);
+	    bool isFaultImprecise = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 2) ? true : false);
+	    bool isFaultOnUnstacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 3) ? true : false);
+	    bool isFaultOnStacking = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 4) ? true : false);
+	    bool isFaultAddressValid = ((SCB->CFSR >> SCB_CFSR_BUSFAULTSR_Pos) & (1 << 7) ? true : false);
+	    (void)isFaultPrecise;
+	    (void)isFaultImprecise;
+	    (void)isFaultOnUnstacking;
+	    (void)isFaultOnStacking;
+	    (void)isFaultAddressValid;
+	    //Cause debugger to stop. Ignored if no debugger is attached
+	    bkpt();
+	    NVIC_SystemReset();
 }
 
 /*
