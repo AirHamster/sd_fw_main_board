@@ -23,6 +23,7 @@
 #include "MPU9250.h"
 #include "sd_shell_cmds.h"
 #include "xbee.h"
+#include "ff.h"
 
 #include "chprintf.h"
 #include "neo-m8.h"
@@ -98,6 +99,24 @@ void insert_dot(char *str){
   STM32_IWDG_WIN_DISABLED
 };
 */
+
+/* Maximum speed SPI configuration (18MHz, CPHA=0, CPOL=0, MSb first).*/
+static const SPIConfig hs_spicfg = {false, NULL, GPIOC, GPIOC_SD_CS, 0, 0};
+
+/* Low speed SPI configuration (281.250kHz, CPHA=0, CPOL=0, MSb first).*/
+static const SPIConfig ls_spicfg = {false, NULL, GPIOC, GPIOC_SD_CS,
+		SPI_CR1_BR_2,
+                                    0};
+
+/*===========================================================================*/
+/* Module exported variables.                                                */
+/*===========================================================================*/
+
+/* MMC/SD over SPI driver configuration.*/
+MMCConfig const portab_mmccfg = {&SPID3, &ls_spicfg, &hs_spicfg};
+MMCDriver MMCD1;
+
+
 const I2CConfig i2c1cfg = {
   0x20E7112A,
   0,
@@ -173,6 +192,121 @@ const SPIConfig mpu_spi_cfg = {
 		//0,
 		0
 };
+
+
+/*===========================================================================*/
+/* FatFs related.                                                            */
+/*===========================================================================*/
+
+/**
+ * @brief FS object.
+ */
+static FATFS SDC_FS;
+
+/* FS mounted and ready.*/
+static bool fs_ready = FALSE;
+
+/* Generic large buffer.*/
+static uint8_t fbuff[1024];
+
+static FRESULT scan_files(BaseSequentialStream *chp, char *path) {
+  static FILINFO fno;
+  FRESULT res;
+  DIR dir;
+  size_t i;
+  char *fn;
+
+  res = f_opendir(&dir, path);
+  if (res == FR_OK) {
+    i = strlen(path);
+    while (((res = f_readdir(&dir, &fno)) == FR_OK) && fno.fname[0]) {
+      if (FF_FS_RPATH && fno.fname[0] == '.')
+        continue;
+      fn = fno.fname;
+      if (fno.fattrib & AM_DIR) {
+        *(path + i) = '/';
+        strcpy(path + i + 1, fn);
+        res = scan_files(chp, path);
+        *(path + i) = '\0';
+        if (res != FR_OK)
+          break;
+      }
+      else {
+        chprintf(chp, "%s/%s\r\n", path, fn);
+      }
+    }
+  }
+  return res;
+}
+
+void cmd_tree(BaseSequentialStream *chp, int argc, char *argv[]) {
+  FRESULT err;
+  uint32_t fre_clust;
+  FATFS *fsp;
+
+  (void)argv;
+  if (argc > 0) {
+    chprintf(chp, "Usage: tree\r\n");
+    return;
+  }
+  if (!fs_ready) {
+    chprintf(chp, "File System not mounted\r\n");
+    return;
+  }
+  err = f_getfree("/", &fre_clust, &fsp);
+  if (err != FR_OK) {
+    chprintf(chp, "FS: f_getfree() failed\r\n");
+    return;
+  }
+  chprintf(chp,
+           "FS: %lu free clusters with %lu sectors (%lu bytes) per cluster\r\n",
+           fre_clust, (uint32_t)fsp->csize, (uint32_t)fsp->csize * 512);
+  fbuff[0] = 0;
+  scan_files(chp, (char *)fbuff);
+}
+
+
+
+/*
+ * Card insertion event.
+ */
+void cmd_mount(BaseSequentialStream *chp, int argc, char *argv[]){
+  FRESULT err;
+
+  /*
+   * On insertion SDC initialization and FS mount.
+   */
+
+  chprintf(chp,
+    	             "FS: mmcConnect\r\n");
+    chThdSleepMilliseconds(110);
+#if HAL_USE_SDC
+  if (sdcConnect(&SDCD1))
+#else
+  if (mmcConnect(&MMCD1))
+#endif
+    return;
+  chprintf(chp,
+  	             "FS: trying to mounting\r\n");
+  chThdSleepMilliseconds(110);
+  err = f_mount(&SDC_FS, "/", 1);
+  if (err != FR_OK) {
+	  chprintf(chp,
+	             "FS: error mounting %d\r\n", err);
+#if HAL_USE_SDC
+    sdcDisconnect(&SDCD1);
+#else
+    mmcDisconnect(&MMCD1);
+#endif
+    return;
+  }
+  fs_ready = TRUE;
+}
+
+/*===========================================================================*/
+/* Command line related.                                                     */
+/*===========================================================================*/
+
 
 thread_reference_t xbee_poll_trp = NULL;
 
@@ -335,7 +469,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 		chSysUnlock();
 		switch(msg){
 		case MPU_GET_GYRO_DATA:
-			bno055_read_euler(bno055);
+			//bno055_read_euler(bno055);
 			send_json(pvt_box, bno055);
 			//mpu_get_gyro_data();
 			break;
@@ -835,7 +969,12 @@ int main(void) {
 	palSetLine(LINE_RF_868_RST);
 
 	uint8_t chip_id;
-	bno055_full_init(bno055);
+//	bno055_full_init(bno055);
+
+	mmcObjectInit(&MMCD1);
+	  mmcStart(&MMCD1, &portab_mmccfg);
+//	  InsertSD();
+
 	  /*
 	   * Starting the watchdog driver.
 	   */
@@ -883,7 +1022,7 @@ int main(void) {
 	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
+//	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
 
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);

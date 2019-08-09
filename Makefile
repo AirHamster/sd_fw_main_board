@@ -85,6 +85,7 @@ USE_IRIDIUM_9603_MODULE = FALSE
 USE_XBEE_868_MODULE = TRUE
 USE_EEPROM_MODULE = TRUE
 USE_BNO055_MODULE = TRUE
+USE_FATFS_MODULE = TRUE 
 SHELL_CONFIG_FILE = TRUE
 
 USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL}\
@@ -95,6 +96,7 @@ USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL}\
 -DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE}\
 -DUSE_EEPROM_MODULE=${USE_EEPROM_MODULE}\
 -DUSE_BNO055_MODULE=${USE_BNO055_MODULE}\
+-DUSE_FATFS_MODULE=${USE_FATFS_MODULE}\
 -DCHPRINTF_USE_FLOAT=TRUE
 
 
@@ -134,6 +136,7 @@ include $(CHIBIOS)/test/rt/rt_test.mk
 include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
+include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
 #User makefiles
 include ./sd_modules/sd_modules.mk
 # Define linker script file here

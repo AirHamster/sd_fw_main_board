@@ -534,9 +534,9 @@
  * PB1  - GREEN_LED                 (output pushpull maximum).
  * PB2  - RED_LED                   (output pushpull maximum).
  * PB3  - USART7_RX                 (alternate 12).
- * PB4  - BUZZER                    (alternate 2).
+ * PB4  - BUZZER                    (alternate 2).  //CHANGE TO UART7_TX!!!!
  * PB5  - RTK_STAT                  (input pullup).
- * PB6  - I2C1_SCL                  (alternate 4).
+ * PB6  - I2C1_SCL                  (alternate 4).m
  * PB7  - I2C1_SDA                  (alternate 4).
  * PB8  - RF_2_4_CS                 (output pushpull maximum).
  * PB9  - M8T_RST                   (output pushpull maximum).
