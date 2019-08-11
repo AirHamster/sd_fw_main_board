@@ -137,8 +137,8 @@
 #define GPIOD_GPIOD_14              14U
 #define GPIOD_GPIOD_15              15U
 
-#define GPIOE_SAT_NTW_AV            0U
-#define GPIOE_SAT_RING_SGN          1U
+#define GPIOE_UART8_RX            0U
+#define GPIOE_UART8_TX          1U
 #define GPIOE_RAM_CS1               2U
 #define GPIOE_RAM_CS2               3U
 #define GPIOE_GPIOE_4               4U
@@ -764,8 +764,8 @@
 /*
  * GPIOD setup:
  *
- * PD0  - CAN1_RX                   (alternate 9).
- * PD1  - CAN1_TX                   (alternate 9).
+ * PD0  - CAN1_RX                   (alternate 9).	//!!!! While previous version of pcb using this pins to parce wind sensor
+ * PD1  - CAN1_TX                   (alternate 9).	//	on UART4
  * PD2  - USART5_RX                 (alternate 8).
  * PD3  - GPIOD_3                   (input pullup).
  * PD4  - GPIOD_4                   (input pullup).
@@ -881,8 +881,8 @@
 /*
  * GPIOE setup:
  *
- * PE0  - SAT_NTW_AV                (input pullup).
- * PE1  - SAT_RING_SGN              (input pullup).
+ * PE0  - GPIOE_UART8_RX            (alternate 8).
+ * PE1  - GPIOE_UART8_TX            (alternate 8).
  * PE2  - RAM_CS1                   (output pushpull maximum).
  * PE3  - RAM_CS2                   (output pushpull maximum).
  * PE4  - GPIOE_4                   (input pullup).
@@ -898,8 +898,8 @@
  * PE14 - KEY2                      (input pullup).
  * PE15 - KEY3                      (input pullup).
  */
-#define VAL_GPIOE_MODER             (PIN_MODE_INPUT(GPIOE_SAT_NTW_AV) |     \
-                                     PIN_MODE_INPUT(GPIOE_SAT_RING_SGN) |   \
+#define VAL_GPIOE_MODER             (PIN_MODE_ALTERNATE(GPIOE_UART8_RX) |     \
+                                     PIN_MODE_ALTERNATE(GPIOE_UART8_TX) |   \
                                      PIN_MODE_OUTPUT(GPIOE_RAM_CS1) |       \
                                      PIN_MODE_OUTPUT(GPIOE_RAM_CS2) |       \
                                      PIN_MODE_INPUT(GPIOE_GPIOE_4) |        \
@@ -914,8 +914,8 @@
                                      PIN_MODE_INPUT(GPIOE_KEY1) |           \
                                      PIN_MODE_INPUT(GPIOE_KEY2) |           \
                                      PIN_MODE_INPUT(GPIOE_KEY3))
-#define VAL_GPIOE_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOE_SAT_NTW_AV) | \
-                                     PIN_OTYPE_PUSHPULL(GPIOE_SAT_RING_SGN) |\
+#define VAL_GPIOE_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOE_UART8_RX) | \
+                                     PIN_OTYPE_PUSHPULL(GPIOE_UART8_TX) |\
                                      PIN_OTYPE_PUSHPULL(GPIOE_RAM_CS1) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOE_RAM_CS2) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOE_GPIOE_4) |    \
@@ -930,8 +930,8 @@
                                      PIN_OTYPE_PUSHPULL(GPIOE_KEY1) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOE_KEY2) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOE_KEY3))
-#define VAL_GPIOE_OSPEEDR           (PIN_OSPEED_HIGH(GPIOE_SAT_NTW_AV) |    \
-                                     PIN_OSPEED_VERYLOW(GPIOE_SAT_RING_SGN) |\
+#define VAL_GPIOE_OSPEEDR           (PIN_OSPEED_HIGH(GPIOE_UART8_RX) |    \
+                                     PIN_OSPEED_VERYLOW(GPIOE_UART8_TX) |\
                                      PIN_OSPEED_HIGH(GPIOE_RAM_CS1) |       \
                                      PIN_OSPEED_HIGH(GPIOE_RAM_CS2) |       \
                                      PIN_OSPEED_HIGH(GPIOE_GPIOE_4) |       \
@@ -946,8 +946,8 @@
                                      PIN_OSPEED_HIGH(GPIOE_KEY1) |          \
                                      PIN_OSPEED_VERYLOW(GPIOE_KEY2) |       \
                                      PIN_OSPEED_HIGH(GPIOE_KEY3))
-#define VAL_GPIOE_PUPDR             (PIN_PUPDR_PULLUP(GPIOE_SAT_NTW_AV) |   \
-                                     PIN_PUPDR_PULLUP(GPIOE_SAT_RING_SGN) | \
+#define VAL_GPIOE_PUPDR             (PIN_PUPDR_PULLUP(GPIOE_UART8_RX) |   \
+                                     PIN_PUPDR_PULLUP(GPIOE_UART8_TX) | \
                                      PIN_PUPDR_PULLUP(GPIOE_RAM_CS1) |      \
                                      PIN_PUPDR_PULLUP(GPIOE_RAM_CS2) |      \
                                      PIN_PUPDR_PULLUP(GPIOE_GPIOE_4) |      \
@@ -962,8 +962,8 @@
                                      PIN_PUPDR_PULLUP(GPIOE_KEY1) |         \
                                      PIN_PUPDR_PULLUP(GPIOE_KEY2) |         \
                                      PIN_PUPDR_PULLUP(GPIOE_KEY3))
-#define VAL_GPIOE_ODR               (PIN_ODR_HIGH(GPIOE_SAT_NTW_AV) |       \
-                                     PIN_ODR_HIGH(GPIOE_SAT_RING_SGN) |     \
+#define VAL_GPIOE_ODR               (PIN_ODR_HIGH(GPIOE_UART8_RX) |       \
+                                     PIN_ODR_HIGH(GPIOE_UART8_TX) |     \
                                      PIN_ODR_HIGH(GPIOE_RAM_CS1) |          \
                                      PIN_ODR_HIGH(GPIOE_RAM_CS2) |          \
                                      PIN_ODR_HIGH(GPIOE_GPIOE_4) |          \
@@ -978,8 +978,8 @@
                                      PIN_ODR_HIGH(GPIOE_KEY1) |             \
                                      PIN_ODR_HIGH(GPIOE_KEY2) |             \
                                      PIN_ODR_HIGH(GPIOE_KEY3))
-#define VAL_GPIOE_AFRL              (PIN_AFIO_AF(GPIOE_SAT_NTW_AV, 0U) |    \
-                                     PIN_AFIO_AF(GPIOE_SAT_RING_SGN, 0U) |  \
+#define VAL_GPIOE_AFRL              (PIN_AFIO_AF(GPIOE_UART8_RX, 8U) |    \
+                                     PIN_AFIO_AF(GPIOE_UART8_TX, 8U) |  \
                                      PIN_AFIO_AF(GPIOE_RAM_CS1, 0U) |       \
                                      PIN_AFIO_AF(GPIOE_RAM_CS2, 0U) |       \
                                      PIN_AFIO_AF(GPIOE_GPIOE_4, 0U) |       \

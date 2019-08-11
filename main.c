@@ -29,6 +29,7 @@
 #include "neo-m8.h"
 #include "bno055.h"
 #include "bno055_i2c.h"
+#include "windsensor.h"
 
 //#define TRAINER_MODULE
 /**
@@ -62,7 +63,7 @@ extern xbee_struct_t *xbee;
 extern neo_struct_t *neo;
 extern mpu_struct_t *mpu;
 extern tx_box_t *tx_box;
-
+extern windsensor_t *wind;
 extern output_struct_t *output;
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
@@ -194,118 +195,6 @@ const SPIConfig mpu_spi_cfg = {
 };
 
 
-/*===========================================================================*/
-/* FatFs related.                                                            */
-/*===========================================================================*/
-
-/**
- * @brief FS object.
- */
-static FATFS SDC_FS;
-
-/* FS mounted and ready.*/
-static bool fs_ready = FALSE;
-
-/* Generic large buffer.*/
-static uint8_t fbuff[1024];
-
-static FRESULT scan_files(BaseSequentialStream *chp, char *path) {
-  static FILINFO fno;
-  FRESULT res;
-  DIR dir;
-  size_t i;
-  char *fn;
-
-  res = f_opendir(&dir, path);
-  if (res == FR_OK) {
-    i = strlen(path);
-    while (((res = f_readdir(&dir, &fno)) == FR_OK) && fno.fname[0]) {
-      if (FF_FS_RPATH && fno.fname[0] == '.')
-        continue;
-      fn = fno.fname;
-      if (fno.fattrib & AM_DIR) {
-        *(path + i) = '/';
-        strcpy(path + i + 1, fn);
-        res = scan_files(chp, path);
-        *(path + i) = '\0';
-        if (res != FR_OK)
-          break;
-      }
-      else {
-        chprintf(chp, "%s/%s\r\n", path, fn);
-      }
-    }
-  }
-  return res;
-}
-
-void cmd_tree(BaseSequentialStream *chp, int argc, char *argv[]) {
-  FRESULT err;
-  uint32_t fre_clust;
-  FATFS *fsp;
-
-  (void)argv;
-  if (argc > 0) {
-    chprintf(chp, "Usage: tree\r\n");
-    return;
-  }
-  if (!fs_ready) {
-    chprintf(chp, "File System not mounted\r\n");
-    return;
-  }
-  err = f_getfree("/", &fre_clust, &fsp);
-  if (err != FR_OK) {
-    chprintf(chp, "FS: f_getfree() failed\r\n");
-    return;
-  }
-  chprintf(chp,
-           "FS: %lu free clusters with %lu sectors (%lu bytes) per cluster\r\n",
-           fre_clust, (uint32_t)fsp->csize, (uint32_t)fsp->csize * 512);
-  fbuff[0] = 0;
-  scan_files(chp, (char *)fbuff);
-}
-
-
-
-/*
- * Card insertion event.
- */
-void cmd_mount(BaseSequentialStream *chp, int argc, char *argv[]){
-  FRESULT err;
-
-  /*
-   * On insertion SDC initialization and FS mount.
-   */
-
-  chprintf(chp,
-    	             "FS: mmcConnect\r\n");
-    chThdSleepMilliseconds(110);
-#if HAL_USE_SDC
-  if (sdcConnect(&SDCD1))
-#else
-  if (mmcConnect(&MMCD1))
-#endif
-    return;
-  chprintf(chp,
-  	             "FS: trying to mounting\r\n");
-  chThdSleepMilliseconds(110);
-  err = f_mount(&SDC_FS, "/", 1);
-  if (err != FR_OK) {
-	  chprintf(chp,
-	             "FS: error mounting %d\r\n", err);
-#if HAL_USE_SDC
-    sdcDisconnect(&SDCD1);
-#else
-    mmcDisconnect(&MMCD1);
-#endif
-    return;
-  }
-  fs_ready = TRUE;
-}
-
-/*===========================================================================*/
-/* Command line related.                                                     */
-/*===========================================================================*/
 
 
 thread_reference_t xbee_poll_trp = NULL;
@@ -769,6 +658,8 @@ void send_json(ubx_nav_pvt_t *pvt_box, bno055_t *bno055)
 		chprintf((BaseSequentialStream*)&SD1, "\"sat\":%d,\r\n\t\t\t", pvt_box->numSV);
 		//chprintf((BaseSequentialStream*)&SD1, "\"mag_decl\":%f,\r\n\t\t\t", pvt_box->magDec / 100.0f);
 		chprintf((BaseSequentialStream*)&SD1, "\"rssi\":%d,\r\n\t\t\t", xbee->rssi);
+		chprintf((BaseSequentialStream*)&SD1, "\"wind_dir\":%d,\r\n\t\t\t", wind->direction);
+		chprintf((BaseSequentialStream*)&SD1, "\"wind_spd\":%f,\r\n\t\t\t", wind->speed);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"accel_raw\":%d; %d; %d,\r\n\t\t\t", bno055->accel_raw.x, bno055->accel_raw.y, bno055->accel_raw.z);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"gyro_raw\":%d; %d; %d,\r\n\t\t\t", bno055->gyro_raw.x, bno055->gyro_raw.y, bno055->gyro_raw.z);
 	//	chprintf((BaseSequentialStream*)&SD1, "\"magn_raw\":%d; %d; %d,\r\n\t\t\t", bno055->mag_raw.x, bno055->mag_raw.y, bno055->mag_raw.z);
@@ -889,6 +780,8 @@ void _unhandled_exception(void) {
  * Application entry point.
  */
 int main(void) {
+	uint32_t *ACTLR = (uint32_t *)0xE000E008;
+	*ACTLR |= 2;
 	thread_t *sh = NULL;
 	float mag_scaling[3];
 
@@ -1017,13 +910,14 @@ int main(void) {
 					chThdSleepMilliseconds(50);
 					neo_poll();
 
-	chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
-	chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 6, xbee_poll_thread, NULL);
-	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
-	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
-	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-//	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
+	chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO, xbee_thread, NULL);
+	chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO, xbee_poll_thread, NULL);
+	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO, shell_thread, NULL);
+	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO, output_thread, NULL);
+	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO, coords_thread, NULL);
+	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO, mpu_thread, NULL);
 
+	start_windsensor_module();
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
 	palSetLineCallbackI(LINE_RF_868_SPI_ATTN, xbee_attn_event, NULL);
 
