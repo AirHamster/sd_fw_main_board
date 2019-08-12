@@ -114,8 +114,8 @@ static const SPIConfig ls_spicfg = {false, NULL, GPIOC, GPIOC_SD_CS,
 /*===========================================================================*/
 
 /* MMC/SD over SPI driver configuration.*/
-MMCConfig const portab_mmccfg = {&SPID3, &ls_spicfg, &hs_spicfg};
-MMCDriver MMCD1;
+//MMCConfig const portab_mmccfg = {&SPID3, &ls_spicfg, &hs_spicfg};
+//MMCDriver MMCD1;
 
 
 const I2CConfig i2c1cfg = {
@@ -358,7 +358,7 @@ static THD_FUNCTION(mpu_thread, arg) {
 		chSysUnlock();
 		switch(msg){
 		case MPU_GET_GYRO_DATA:
-			//bno055_read_euler(bno055);
+			bno055_read_euler(bno055);
 			send_json(pvt_box, bno055);
 			//mpu_get_gyro_data();
 			break;
@@ -862,10 +862,10 @@ int main(void) {
 	palSetLine(LINE_RF_868_RST);
 
 	uint8_t chip_id;
-//	bno055_full_init(bno055);
+	bno055_full_init(bno055);
 
-	mmcObjectInit(&MMCD1);
-	  mmcStart(&MMCD1, &portab_mmccfg);
+//	mmcObjectInit(&MMCD1);
+//	  mmcStart(&MMCD1, &portab_mmccfg);
 //	  InsertSD();
 
 	  /*
