@@ -657,7 +657,7 @@ int main(void) {
 #endif
 	//sdStart(&SD7, &sd7cfg);
 	//chprintf((BaseSequentialStream*)&SD7, "AT+CPWROFF\r");
-	mpu9250_init();
+/*	mpu9250_init();
 
 	chThdSleepMilliseconds(100);
 
@@ -686,7 +686,7 @@ int main(void) {
 	chprintf((BaseSequentialStream*)&SD1, "Looks like magn starts successfully\r\n");
 	chSemSignal(&usart1_semaph);
 
-
+*/
 	output->suspend_state = 1;
 	xbee->suspend_state = 1;
 	xbee->poll_suspend_state = 1;
@@ -729,13 +729,13 @@ int main(void) {
 					neo_poll();
 
 	start_microsd_module();
-	bno055_full_init(bno055);
+	//bno055_full_init(bno055);
 	chThdCreateStatic(xbee_thread_wa, sizeof(xbee_thread_wa), NORMALPRIO + 1, xbee_thread, NULL);
 	chThdCreateStatic(xbee_poll_thread_wa, sizeof(xbee_poll_thread_wa), NORMALPRIO + 6, xbee_poll_thread, NULL);
 	chThdCreateStatic(shell_thread_wa, sizeof(shell_thread_wa), NORMALPRIO + 3, shell_thread, NULL);
 	chThdCreateStatic(output_thread_wa, sizeof(output_thread_wa), NORMALPRIO + 3, output_thread, NULL);
 	chThdCreateStatic(coords_thread_wa, sizeof(coords_thread_wa), NORMALPRIO + 5, coords_thread, NULL);
-	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
+//	chThdCreateStatic(mpu_thread_wa, sizeof(mpu_thread_wa), NORMALPRIO + 4, mpu_thread, NULL);
 
 	start_windsensor_module();
 	palEnableLineEventI(LINE_RF_868_SPI_ATTN, PAL_EVENT_MODE_FALLING_EDGE);
