@@ -569,8 +569,8 @@
                                      PIN_OTYPE_PUSHPULL(GPIOB_USART7_RX) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOB_BUZZER) |     \
                                      PIN_OTYPE_PUSHPULL(GPIOB_RTK_STAT) |   \
-                                     PIN_OTYPE_PUSHPULL(GPIOB_I2C1_SCL) |   \
-                                     PIN_OTYPE_PUSHPULL(GPIOB_I2C1_SDA) |   \
+                                     PIN_OTYPE_OPENDRAIN(GPIOB_I2C1_SCL) |   \
+                                     PIN_OTYPE_OPENDRAIN(GPIOB_I2C1_SDA) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOB_RF_2_4_CS) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOB_M8T_RST) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOB_SPI2_CLK) |   \
@@ -601,8 +601,8 @@
                                      PIN_PUPDR_PULLUP(GPIOB_USART7_RX) |    \
                                      PIN_PUPDR_PULLUP(GPIOB_BUZZER) |       \
                                      PIN_PUPDR_PULLUP(GPIOB_RTK_STAT) |     \
-                                     PIN_PUPDR_PULLUP(GPIOB_I2C1_SCL) |     \
-                                     PIN_PUPDR_PULLUP(GPIOB_I2C1_SDA) |     \
+                                     PIN_PUPDR_FLOATING(GPIOB_I2C1_SCL) |     \
+                                     PIN_PUPDR_FLOATING(GPIOB_I2C1_SDA) |     \
                                      PIN_PUPDR_PULLUP(GPIOB_RF_2_4_CS) |    \
                                      PIN_PUPDR_PULLUP(GPIOB_M8T_RST) |      \
                                      PIN_PUPDR_PULLUP(GPIOB_SPI2_CLK) |     \

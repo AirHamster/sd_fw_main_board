@@ -66,7 +66,7 @@ endif
 
  # Enables the use of FPU (no, softfp, hard).
 ifeq ($(USE_FPU),)
-  USE_FPU = softfp
+  USE_FPU = no
 endif
 
 # FPU-related options.
@@ -77,28 +77,17 @@ endif
 #
 # Architecture or project specific options
 ##############################################################################
-USE_DEBUG_SHELL = TRUE
 USE_SD_SHELL = TRUE
-USE_MPU_9250_MODULE = TRUE
 USE_UBLOX_GPS_MODULE = TRUE
-USE_IRIDIUM_9603_MODULE = FALSE
-USE_XBEE_868_MODULE = TRUE
-USE_EEPROM_MODULE = TRUE
-USE_BNO055_MODULE = TRUE
-USE_WINDSENSOR_MODULE = TRUE
-USE_MICROSD_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
+USE_BNO055_MODULE = TRUE
+USE_MICROSD_MODULE = TRUE
+USE_WINDSENSOR_MODULE = TRUE
 
-USER_CFLAGS += -DUSE_DEBUG_SHELL=${USE_DEBUG_SHELL}\
--DUSE_MPU_9250_MODULE=${USE_MPU_9250_MODULE}\
--DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
--DUSE_IRIDIUM_9603_MODULE=${USE_IRIDIUM_9603_MODULE}\
--DUSE_XBEE_868_MODULE=${USE_XBEE_868_MODULE}\
--DSHELL_CONFIG_FILE=${SHELL_CONFIG_FILE}\
--DUSE_EEPROM_MODULE=${USE_EEPROM_MODULE}\
+USER_CFLAGS += -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
 -DUSE_BNO055_MODULE=${USE_BNO055_MODULE}\
--DUSE_WINDSENSOR_MODULE=${USE_WINDSENSOR_MODULE}\
 -DUSE_MICROSD_MODULE=${USE_MICROSD_MODULE}\
+-DUSE_WINDSENSOR_MODULE=${USE_WINDSENSOR_MODULE}\
 -DCHPRINTF_USE_FLOAT=TRUE
 
 #-DUSE_FATFS_MODULE=${USE_FATFS_MODULE}\
@@ -135,9 +124,9 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk
 # Auto-build files in ./source recursively.
 include $(CHIBIOS)/tools/mk/autobuild.mk
 # Other files (optional).
-include $(CHIBIOS)/test/lib/test.mk
-include $(CHIBIOS)/test/rt/rt_test.mk
-include $(CHIBIOS)/test/oslib/oslib_test.mk
+#include $(CHIBIOS)/test/lib/test.mk
+#include $(CHIBIOS)/test/rt/rt_test.mk
+#include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
 include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
@@ -151,6 +140,7 @@ LDSCRIPT= $(STARTUPLD)/STM32F76xxI.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        $(CHIBIOS)/os/various/syscalls.c \
+       exeptions.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
