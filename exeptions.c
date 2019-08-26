@@ -15,7 +15,7 @@
 #include <string.h>
 
 // Can be uncommented to see backtrace.
-//#define DEBUG_BACKTRACE
+#define DEBUG_BACKTRACE
 
 /**
  * Executes the BKPT instruction that causes the debugger to stop.

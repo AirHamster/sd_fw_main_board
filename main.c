@@ -60,9 +60,10 @@ void fill_memory(void){
 #ifdef USE_BNO055_MODULE
 	bno055 = calloc(1, sizeof(bno055_t));
 	pvt_box = calloc(1, sizeof(ubx_nav_pvt_t));
+#endif
+#ifdef USE_WINDSENSOR_MODULE
 	wind = calloc(1, sizeof(windsensor_t));
 #endif
-
 }
 /*
  * Application entry point.
@@ -110,7 +111,7 @@ int main(void) {
 #endif
 	chThdSleepMilliseconds(30);
 #ifdef USE_MICROSD_MODULE
-	start_microsd_module();
+	//start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
