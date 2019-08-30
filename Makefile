@@ -66,7 +66,7 @@ endif
 
  # Enables the use of FPU (no, softfp, hard).
 ifeq ($(USE_FPU),)
-  USE_FPU = no
+  USE_FPU = hard
 endif
 
 # FPU-related options.
@@ -78,6 +78,7 @@ endif
 # Architecture or project specific options
 ##############################################################################
 USE_SD_SHELL = TRUE
+USE_BLE_MODULE = TRUE
 USE_UBLOX_GPS_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
 USE_BNO055_MODULE = TRUE
@@ -88,6 +89,7 @@ USER_CFLAGS += -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
 -DUSE_BNO055_MODULE=${USE_BNO055_MODULE}\
 -DUSE_MICROSD_MODULE=${USE_MICROSD_MODULE}\
 -DUSE_WINDSENSOR_MODULE=${USE_WINDSENSOR_MODULE}\
+-DUSE_BLE_MODULE=${USE_BLE_MODULE}\
 -DCHPRINTF_USE_FLOAT=TRUE
 
 #-DUSE_FATFS_MODULE=${USE_FATFS_MODULE}\
@@ -98,7 +100,7 @@ USER_CFLAGS += -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
 #
 
 # Define project name here
-PROJECT = ch
+PROJECT = sd_main
 
 # Target settings.
 MCU  = cortex-m4

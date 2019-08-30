@@ -80,7 +80,7 @@
 		<link>
 			<name>os</name>
 			<type>2</type>
-			<locationURI>CHIBIOS/os</locationURI>
+			<location>/home/a-h/workspace/saildata/firmware/ChibiOS/os</location>
 		</link>
 		<link>
 			<name>test</name>

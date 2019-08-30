@@ -20,5 +20,12 @@
 #define USE_MICROSD_MODULE
 #define USE_WINDSENSOR_MODULE
 #define SHELL_CONFIG_FILE
+#define USE_BLE_MODULE
 
+
+#define GPS_IF		SPID4
+#define GYRO_IF		I2CD2
+#define MICROSD_IF	SPID3
+#define BLE_IF		SD7
+#define WIND_IF		UARTD8
 #endif /* CONFIG_H_ */
