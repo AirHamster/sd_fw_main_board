@@ -160,8 +160,8 @@
 #define GPIOF_ADC3_IN9              3U
 #define GPIOF_ADC3_IN14             4U
 #define GPIOF_ADC3_IN15             5U
-#define GPIOF_GPIOF_6               6U
-#define GPIOF_GPIOF_7               7U
+#define GPIOF_USART7_RX             6U
+#define GPIOF_USART7_TX             7U
 #define GPIOF_RF_868_SLEEP          8U
 #define GPIOF_RF_868_RST            9U
 #define GPIOF_GPIOF_10              10U
@@ -313,7 +313,7 @@
 #define LINE_CAN1_TX                PAL_LINE(GPIOD, 1U)
 #define LINE_USART5_RX              PAL_LINE(GPIOD, 2U)
 #define LINE_GPIOD_3                PAL_LINE(GPIOD, 3U)
-#define LINE_SD_CS                PAL_LINE(GPIOD, 4U)
+#define LINE_SD_CS               	PAL_LINE(GPIOD, 4U)
 #define LINE_GPIOD_5                PAL_LINE(GPIOD, 5U)
 #define LINE_SPI3_MOSI              PAL_LINE(GPIOD, 6U)
 #define LINE_GPIOD_7                PAL_LINE(GPIOD, 7U)
@@ -347,8 +347,8 @@
 #define LINE_ADC3_IN9               PAL_LINE(GPIOF, 3U)
 #define LINE_ADC3_IN14              PAL_LINE(GPIOF, 4U)
 #define LINE_ADC3_IN15              PAL_LINE(GPIOF, 5U)
-#define LINE_GPIOF_6                PAL_LINE(GPIOF, 6U)
-#define LINE_GPIOF_7                PAL_LINE(GPIOF, 7U)
+#define LINE_USART7_RX              PAL_LINE(GPIOF, 6U)
+#define LINE_USART7_TX              PAL_LINE(GPIOF, 7U)
 #define LINE_RF_868_SLEEP           PAL_LINE(GPIOF, 8U)
 #define LINE_RF_868_RST             PAL_LINE(GPIOF, 9U)
 #define LINE_GPIOF_10               PAL_LINE(GPIOF, 10U)
@@ -1004,8 +1004,8 @@
  * PF3  - ADC3_IN9                  (analog).
  * PF4  - ADC3_IN14                 (analog).
  * PF5  - ADC3_IN15                 (analog).
- * PF6  - GPIOF_6                   (input pullup).
- * PF7  - GPIOF_7                   (input pullup).
+ * PF6  - USART7_RX                 (alternate 8).
+ * PF7  - USART7_TX                 (alternate 8).
  * PF8  - RF_868_SLEEP              (output pushpull maximum).
  * PF9  - RF_868_RST                (output open drain).
  * PF10 - GPIOF_10                  (input pullup).
@@ -1021,8 +1021,8 @@
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN9) |      \
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN14) |     \
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN15) |     \
-                                     PIN_MODE_INPUT(GPIOF_GPIOF_6) |        \
-                                     PIN_MODE_INPUT(GPIOF_GPIOF_7) |        \
+                                     PIN_MODE_ALTERNATE(GPIOF_USART7_RX) |        \
+                                     PIN_MODE_ALTERNATE(GPIOF_USART7_TX) |        \
                                      PIN_MODE_OUTPUT(GPIOF_RF_868_SLEEP) |  \
                                      PIN_MODE_OUTPUT(GPIOF_RF_868_RST) |    \
                                      PIN_MODE_INPUT(GPIOF_GPIOF_10) |       \
@@ -1037,8 +1037,8 @@
                                      PIN_OTYPE_PUSHPULL(GPIOF_ADC3_IN9) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOF_ADC3_IN14) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOF_ADC3_IN15) |  \
-                                     PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_6) |    \
-                                     PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_7) |    \
+                                     PIN_OTYPE_PUSHPULL(GPIOF_USART7_RX) |    \
+                                     PIN_OTYPE_PUSHPULL(GPIOF_USART7_TX) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOF_RF_868_SLEEP) |\
                                      PIN_OTYPE_OPENDRAIN(GPIOF_RF_868_RST) | \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_10) |   \
@@ -1053,8 +1053,8 @@
                                      PIN_OSPEED_HIGH(GPIOF_ADC3_IN9) |      \
                                      PIN_OSPEED_HIGH(GPIOF_ADC3_IN14) |     \
                                      PIN_OSPEED_HIGH(GPIOF_ADC3_IN15) |     \
-                                     PIN_OSPEED_VERYLOW(GPIOF_GPIOF_6) |    \
-                                     PIN_OSPEED_HIGH(GPIOF_GPIOF_7) |       \
+                                     PIN_OSPEED_HIGH(GPIOF_USART7_RX) |    \
+                                     PIN_OSPEED_HIGH(GPIOF_USART7_TX) |       \
                                      PIN_OSPEED_HIGH(GPIOF_RF_868_SLEEP) |  \
                                      PIN_OSPEED_HIGH(GPIOF_RF_868_RST) |    \
                                      PIN_OSPEED_HIGH(GPIOF_GPIOF_10) |      \
@@ -1069,8 +1069,8 @@
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN9) |     \
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN14) |    \
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN15) |    \
-                                     PIN_PUPDR_PULLUP(GPIOF_GPIOF_6) |      \
-                                     PIN_PUPDR_PULLUP(GPIOF_GPIOF_7) |      \
+                                     PIN_PUPDR_PULLUP(GPIOF_USART7_RX) |      \
+                                     PIN_PUPDR_PULLUP(GPIOF_USART7_TX) |      \
                                      PIN_PUPDR_PULLUP(GPIOF_RF_868_SLEEP) | \
                                      PIN_PUPDR_PULLUP(GPIOF_RF_868_RST) |   \
                                      PIN_PUPDR_PULLUP(GPIOF_GPIOF_10) |     \
@@ -1085,8 +1085,8 @@
                                      PIN_ODR_HIGH(GPIOF_ADC3_IN9) |         \
                                      PIN_ODR_HIGH(GPIOF_ADC3_IN14) |        \
                                      PIN_ODR_HIGH(GPIOF_ADC3_IN15) |        \
-                                     PIN_ODR_HIGH(GPIOF_GPIOF_6) |          \
-                                     PIN_ODR_HIGH(GPIOF_GPIOF_7) |          \
+                                     PIN_ODR_HIGH(GPIOF_USART7_RX) |          \
+                                     PIN_ODR_HIGH(GPIOF_USART7_TX) |          \
                                      PIN_ODR_HIGH(GPIOF_RF_868_SLEEP) |     \
                                      PIN_ODR_HIGH(GPIOF_RF_868_RST) |       \
                                      PIN_ODR_HIGH(GPIOF_GPIOF_10) |         \
@@ -1101,8 +1101,8 @@
                                      PIN_AFIO_AF(GPIOF_ADC3_IN9, 0U) |      \
                                      PIN_AFIO_AF(GPIOF_ADC3_IN14, 0U) |     \
                                      PIN_AFIO_AF(GPIOF_ADC3_IN15, 0U) |     \
-                                     PIN_AFIO_AF(GPIOF_GPIOF_6, 0U) |       \
-                                     PIN_AFIO_AF(GPIOF_GPIOF_7, 0U))
+                                     PIN_AFIO_AF(GPIOF_USART7_RX, 8U) |       \
+                                     PIN_AFIO_AF(GPIOF_USART7_TX, 8U))
 #define VAL_GPIOF_AFRH              (PIN_AFIO_AF(GPIOF_RF_868_SLEEP, 0U) |  \
                                      PIN_AFIO_AF(GPIOF_RF_868_RST, 0U) |    \
                                      PIN_AFIO_AF(GPIOF_GPIOF_10, 0U) |      \

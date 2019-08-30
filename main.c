@@ -38,6 +38,9 @@ extern bno055_t *bno055;
 #include "windsensor.h"
 extern windsensor_t *wind;
 #endif
+#ifdef USE_BLE_MODULE
+#include "nina-b3.h"
+#endif
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
 static const WDGConfig wdgcfg = {
@@ -111,7 +114,7 @@ int main(void) {
 #endif
 	chThdSleepMilliseconds(30);
 #ifdef USE_MICROSD_MODULE
-	//start_microsd_module();
+	start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
@@ -128,6 +131,10 @@ int main(void) {
 #ifdef USE_BNO055_MODULE
 	start_bno055_module();
 	chThdSleepMilliseconds(100);
+#endif
+
+#ifdef USE_BLE_MODULE
+//	start_ble_module();
 #endif
 
 #ifdef USE_SD_SHELL
