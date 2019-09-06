@@ -26,6 +26,7 @@ extern ubx_nav_pvt_t *pvt_box;
 #endif
 #ifdef USE_SD_SHELL
 #include "sd_shell_cmds.h"
+extern output_t *output;
 #endif
 #ifdef USE_BNO055_MODULE
 #include "bno055_i2c.h"
@@ -41,6 +42,7 @@ extern windsensor_t *wind;
 #ifdef USE_BLE_MODULE
 #include "nina-b3.h"
 #endif
+#include "eeprom.h"
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
 static const WDGConfig wdgcfg = {
@@ -66,6 +68,9 @@ void fill_memory(void){
 #endif
 #ifdef USE_WINDSENSOR_MODULE
 	wind = calloc(1, sizeof(windsensor_t));
+#endif
+#ifdef USE_SD_SHELL
+	output = calloc(1, sizeof(output_t));
 #endif
 }
 /*
@@ -141,8 +146,12 @@ int main(void) {
 	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
-
-
+	start_eeprom_module();
+	eeprom_write_hw_version();
+	chThdSleepMilliseconds(15);
+	eeprom_read_hw_version();
+	//eeprom_check_i2c_bus();
+	//toggle_test_output();
 
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.

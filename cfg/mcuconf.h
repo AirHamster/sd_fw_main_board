@@ -38,7 +38,7 @@
 #define STM32F769_MCUCONF
 #define STM32F779_MCUCONF
 
-//#define STM32_I2C_USE_DMA	FALSE
+#define STM32_I2C_USE_DMA	FALSE
 #define SHELL_CMD_TEST_ENABLED	FALSE
 #define PLATFORM_WDG_USE_WDG1   TRUE
 #define STM32_IWDG_IS_WINDOWED	FALSE
@@ -194,7 +194,7 @@
 /*
  * I2C driver system settings.
  */
-#define STM32_I2C_USE_I2C1                  FALSE
+#define STM32_I2C_USE_I2C1                  TRUE
 #define STM32_I2C_USE_I2C2                  TRUE
 #define STM32_I2C_USE_I2C3                  FALSE
 #define STM32_I2C_USE_I2C4                  FALSE
