@@ -41,6 +41,7 @@ extern windsensor_t *wind;
 #endif
 #ifdef USE_BLE_MODULE
 #include "nina-b3.h"
+extern ble_t *ble;
 #endif
 #include "eeprom.h"
 struct ch_semaphore usart1_semaph;
@@ -64,10 +65,15 @@ static const WDGConfig wdgcfg = {
 void fill_memory(void){
 #ifdef USE_BNO055_MODULE
 	bno055 = calloc(1, sizeof(bno055_t));
+#endif
+#ifdef USE_UBLOX_GPS_MODULE
 	pvt_box = calloc(1, sizeof(ubx_nav_pvt_t));
 #endif
 #ifdef USE_WINDSENSOR_MODULE
 	wind = calloc(1, sizeof(windsensor_t));
+#endif
+#ifdef USE_BLE_MODULE
+	ble = calloc(1, sizeof(ble_t));
 #endif
 #ifdef USE_SD_SHELL
 	output = calloc(1, sizeof(output_t));
@@ -139,8 +145,9 @@ int main(void) {
 #endif
 
 #ifdef USE_BLE_MODULE
-//	start_ble_module();
+	start_ble_module();
 #endif
+
 
 #ifdef USE_SD_SHELL
 	start_json_module();

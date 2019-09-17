@@ -84,12 +84,12 @@
 #define GPIOA_USB_DP                12U
 #define GPIOA_SWDIO                 13U
 #define GPIOA_SWCLK                 14U
-#define GPIOA_USART7_TX             15U
+#define GPIOA_GPIOA_15             15U
 
 #define GPIOB_GREEN_LED            0U
 #define GPIOB_ORANGE_LED             1U
 #define GPIOB_RED_LED               2U
-#define GPIOB_USART7_RX             3U
+#define GPIOB_GPIOB_3             3U
 #define GPIOB_BUZZER                4U
 #define GPIOB_RTK_STAT              5U
 #define GPIOB_I2C1_SCL              6U
@@ -276,7 +276,7 @@
 #define LINE_USB_DP                 PAL_LINE(GPIOA, 12U)
 #define LINE_SWDIO                  PAL_LINE(GPIOA, 13U)
 #define LINE_SWCLK                  PAL_LINE(GPIOA, 14U)
-#define LINE_USART7_TX              PAL_LINE(GPIOA, 15U)
+#define LINE_GPIOA_15              PAL_LINE(GPIOA, 15U)
 #define LINE_GREEN_LED             	PAL_LINE(GPIOB, 0U)
 #define LINE_ORANGE_LED             PAL_LINE(GPIOB, 1U)
 #define LINE_RED_LED                PAL_LINE(GPIOB, 2U)
@@ -301,7 +301,7 @@
 #define LINE_RF_868_SPI_ATTN        PAL_LINE(GPIOC, 5U)
 #define LINE_GPIOC_6                PAL_LINE(GPIOC, 6U)
 #define LINE_GPIOC_7                PAL_LINE(GPIOC, 7U)
-#define LINE_GPIOC_*                  PAL_LINE(GPIOC, 8U)
+#define LINE_GPIOC_8                  PAL_LINE(GPIOC, 8U)
 #define LINE_I2C3_SDA               PAL_LINE(GPIOC, 9U)
 #define LINE_SPI3_CLK               PAL_LINE(GPIOC, 10U)
 #define LINE_SPI3_MISO              PAL_LINE(GPIOC, 11U)
@@ -347,7 +347,7 @@
 #define LINE_ADC3_IN9               PAL_LINE(GPIOF, 3U)
 #define LINE_ADC3_IN14              PAL_LINE(GPIOF, 4U)
 #define LINE_ADC3_IN15              PAL_LINE(GPIOF, 5U)
-#define LINE_USART7_RX              PAL_LINE(GPIOF, 6U)
+#define LINE_GPIOF_6              PAL_LINE(GPIOF, 6U)
 #define LINE_USART7_TX              PAL_LINE(GPIOF, 7U)
 #define LINE_RF_868_SLEEP           PAL_LINE(GPIOF, 8U)
 #define LINE_RF_868_RST             PAL_LINE(GPIOF, 9U)
@@ -445,7 +445,7 @@
                                      PIN_MODE_ALTERNATE(GPIOA_USB_DP) |     \
                                      PIN_MODE_ALTERNATE(GPIOA_SWDIO) |      \
                                      PIN_MODE_ALTERNATE(GPIOA_SWCLK) |      \
-                                     PIN_MODE_ALTERNATE(GPIOA_USART7_TX))
+                                     PIN_MODE_ALTERNATE(GPIOA_GPIOA_15))
 #define VAL_GPIOA_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOA_USART4_RX) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOA_USART4_TX) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOA_USART2_TX) |  \
@@ -461,7 +461,7 @@
                                      PIN_OTYPE_PUSHPULL(GPIOA_USB_DP) |     \
                                      PIN_OTYPE_PUSHPULL(GPIOA_SWDIO) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOA_SWCLK) |      \
-                                     PIN_OTYPE_PUSHPULL(GPIOA_USART7_TX))
+                                     PIN_OTYPE_PUSHPULL(GPIOA_GPIOA_15))
 #define VAL_GPIOA_OSPEEDR           (PIN_OSPEED_HIGH(GPIOA_USART4_RX) |     \
                                      PIN_OSPEED_HIGH(GPIOA_USART4_TX) |     \
                                      PIN_OSPEED_HIGH(GPIOA_USART2_TX) |     \
@@ -477,7 +477,7 @@
                                      PIN_OSPEED_HIGH(GPIOA_USB_DP) |        \
                                      PIN_OSPEED_HIGH(GPIOA_SWDIO) |         \
                                      PIN_OSPEED_HIGH(GPIOA_SWCLK) |         \
-                                     PIN_OSPEED_HIGH(GPIOA_USART7_TX))
+                                     PIN_OSPEED_HIGH(GPIOA_GPIOA_15))
 #define VAL_GPIOA_PUPDR             (PIN_PUPDR_PULLUP(GPIOA_USART4_RX) |    \
                                      PIN_PUPDR_PULLUP(GPIOA_USART4_TX) |    \
                                      PIN_PUPDR_PULLUP(GPIOA_USART2_TX) |    \
@@ -493,7 +493,7 @@
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DP) |     \
                                      PIN_PUPDR_FLOATING(GPIOA_SWDIO) |      \
                                      PIN_PUPDR_FLOATING(GPIOA_SWCLK) |      \
-                                     PIN_PUPDR_PULLUP(GPIOA_USART7_TX))
+                                     PIN_PUPDR_PULLUP(GPIOA_GPIOA_15))
 #define VAL_GPIOA_ODR               (PIN_ODR_HIGH(GPIOA_USART4_RX) |        \
                                      PIN_ODR_HIGH(GPIOA_USART4_TX) |        \
                                      PIN_ODR_HIGH(GPIOA_USART2_TX) |        \
@@ -509,7 +509,7 @@
                                      PIN_ODR_HIGH(GPIOA_USB_DP) |           \
                                      PIN_ODR_HIGH(GPIOA_SWDIO) |            \
                                      PIN_ODR_HIGH(GPIOA_SWCLK) |            \
-                                     PIN_ODR_HIGH(GPIOA_USART7_TX))
+                                     PIN_ODR_HIGH(GPIOA_GPIOA_15))
 #define VAL_GPIOA_AFRL              (PIN_AFIO_AF(GPIOA_USART4_RX, 8U) |     \
                                      PIN_AFIO_AF(GPIOA_USART4_TX, 8U) |     \
                                      PIN_AFIO_AF(GPIOA_USART2_TX, 7U) |     \
@@ -525,7 +525,7 @@
                                      PIN_AFIO_AF(GPIOA_USB_DP, 10U) |       \
                                      PIN_AFIO_AF(GPIOA_SWDIO, 0U) |         \
                                      PIN_AFIO_AF(GPIOA_SWCLK, 0U) |         \
-                                     PIN_AFIO_AF(GPIOA_USART7_TX, 12U))
+                                     PIN_AFIO_AF(GPIOA_GPIOA_15, 0U))
 
 /*
  * GPIOB setup:
@@ -550,7 +550,7 @@
 #define VAL_GPIOB_MODER             (PIN_MODE_OUTPUT(GPIOB_ORANGE_LED) |    \
                                      PIN_MODE_OUTPUT(GPIOB_GREEN_LED) |     \
                                      PIN_MODE_OUTPUT(GPIOB_RED_LED) |       \
-                                     PIN_MODE_ALTERNATE(GPIOB_USART7_RX) |  \
+                                     PIN_MODE_ALTERNATE(GPIOB_GPIOB_3) |  \
                                      PIN_MODE_ALTERNATE(GPIOB_BUZZER) |     \
                                      PIN_MODE_INPUT(GPIOB_RTK_STAT) |       \
                                      PIN_MODE_ALTERNATE(GPIOB_I2C1_SCL) |   \
@@ -566,7 +566,7 @@
 #define VAL_GPIOB_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOB_ORANGE_LED) | \
                                      PIN_OTYPE_PUSHPULL(GPIOB_GREEN_LED) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOB_RED_LED) |    \
-                                     PIN_OTYPE_PUSHPULL(GPIOB_USART7_RX) |  \
+                                     PIN_OTYPE_PUSHPULL(GPIOB_GPIOB_3) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOB_BUZZER) |     \
                                      PIN_OTYPE_PUSHPULL(GPIOB_RTK_STAT) |   \
                                      PIN_OTYPE_OPENDRAIN(GPIOB_I2C1_SCL) |   \
@@ -582,7 +582,7 @@
 #define VAL_GPIOB_OSPEEDR           (PIN_OSPEED_HIGH(GPIOB_ORANGE_LED) |    \
                                      PIN_OSPEED_HIGH(GPIOB_GREEN_LED) |     \
                                      PIN_OSPEED_HIGH(GPIOB_RED_LED) |       \
-                                     PIN_OSPEED_HIGH(GPIOB_USART7_RX) |     \
+                                     PIN_OSPEED_HIGH(GPIOB_GPIOB_3) |     \
                                      PIN_OSPEED_HIGH(GPIOB_BUZZER) |        \
                                      PIN_OSPEED_HIGH(GPIOB_RTK_STAT) |      \
                                      PIN_OSPEED_HIGH(GPIOB_I2C1_SCL) |      \
@@ -598,7 +598,7 @@
 #define VAL_GPIOB_PUPDR             (PIN_PUPDR_PULLUP(GPIOB_ORANGE_LED) |   \
                                      PIN_PUPDR_PULLUP(GPIOB_GREEN_LED) |    \
                                      PIN_PUPDR_PULLUP(GPIOB_RED_LED) |      \
-                                     PIN_PUPDR_PULLUP(GPIOB_USART7_RX) |    \
+                                     PIN_PUPDR_PULLUP(GPIOB_GPIOB_3) |    \
                                      PIN_PUPDR_PULLUP(GPIOB_BUZZER) |       \
                                      PIN_PUPDR_PULLUP(GPIOB_RTK_STAT) |     \
                                      PIN_PUPDR_FLOATING(GPIOB_I2C1_SCL) |     \
@@ -614,7 +614,7 @@
 #define VAL_GPIOB_ODR               (PIN_ODR_LOW(GPIOB_ORANGE_LED) |        \
                                      PIN_ODR_LOW(GPIOB_GREEN_LED) |         \
                                      PIN_ODR_LOW(GPIOB_RED_LED) |           \
-                                     PIN_ODR_HIGH(GPIOB_USART7_RX) |        \
+                                     PIN_ODR_HIGH(GPIOB_GPIOB_3) |        \
                                      PIN_ODR_HIGH(GPIOB_BUZZER) |           \
                                      PIN_ODR_HIGH(GPIOB_RTK_STAT) |         \
                                      PIN_ODR_HIGH(GPIOB_I2C1_SCL) |         \
@@ -630,7 +630,7 @@
 #define VAL_GPIOB_AFRL              (PIN_AFIO_AF(GPIOB_ORANGE_LED, 0U) |    \
                                      PIN_AFIO_AF(GPIOB_GREEN_LED, 0U) |     \
                                      PIN_AFIO_AF(GPIOB_RED_LED, 0U) |       \
-                                     PIN_AFIO_AF(GPIOB_USART7_RX, 12U) |    \
+                                     PIN_AFIO_AF(GPIOB_GPIOB_3, 0U) |    \
                                      PIN_AFIO_AF(GPIOB_BUZZER, 2U) |        \
                                      PIN_AFIO_AF(GPIOB_RTK_STAT, 0U) |      \
                                      PIN_AFIO_AF(GPIOB_I2C1_SCL, 4U) |      \
