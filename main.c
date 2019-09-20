@@ -153,12 +153,18 @@ int main(void) {
 	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
+
+
 	start_eeprom_module();
-	eeprom_write_hw_version();
+
+#ifdef USE_MATH_MODULE
+	start_math_module();
+#endif
+	//	eeprom_write_hw_version();
 	chThdSleepMilliseconds(15);
-	eeprom_read_hw_version();
+//	eeprom_read_hw_version();
 	//eeprom_check_i2c_bus();
-	//toggle_test_output();
+	toggle_test_output();
 
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.

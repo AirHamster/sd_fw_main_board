@@ -24,6 +24,10 @@
 #define USE_WINDSENSOR_MODULE
 #define SHELL_CONFIG_FILE
 #define USE_BLE_MODULE
+#define USE_MATH_MODULE
+
+#define LAG_ADDR		CCF95781688F
+#define RUDDER_ADDR		CCF957816647
 
 #define SHELL_SD		SD1
 #define SHELL_IFACE		(BaseSequentialStream*)&SD1
