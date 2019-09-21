@@ -34,6 +34,7 @@ extern bno055_t *bno055;
 #endif
 #ifdef USE_MICROSD_MODULE
 #include "microsd.h"
+extern microsd_t *microsd;
 #endif
 #ifdef USE_WINDSENSOR_MODULE
 #include "windsensor.h"
@@ -97,6 +98,9 @@ void fill_memory(void){
 #endif
 #ifdef USE_SD_SHELL
 	output = calloc(1, sizeof(output_t));
+#endif
+#ifdef USE_MICROSD_MODULE
+	microsd = calloc(1, sizeof(microsd_t));
 #endif
 }
 /*
@@ -170,7 +174,7 @@ int main(void) {
 
 	chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
 #ifdef USE_SD_SHELL
-	//start_json_module();
+	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
 

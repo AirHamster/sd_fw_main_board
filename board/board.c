@@ -215,31 +215,9 @@ void __early_init(void) {
 
 //#if defined(BOOTLOADER_ADDRESS)
 
-if (*((unsigned long *) BKPSRAM_BASE) == MAGIC_BOOTLOADER_NUMBER) { // magic flag set
-	//hal_lld_init();
+if (RTC->BKP0R == MAGIC_BOOTLOADER_NUMBER) { // magic flag set
 
-	/* Backup domain access enabled and left open.*/
-	  PWR->CR1 |= PWR_CR1_DBP;
-
-	  /* Reset BKP domain if different clock source selected.*/
-	  if ((RCC->BDCR & STM32_RTCSEL_MASK) != STM32_RTCSEL) {
-	    /* Backup domain reset.*/
-	    RCC->BDCR = RCC_BDCR_BDRST;
-	    RCC->BDCR = 0;
-	  }
-
-//#if STM32_BKPRAM_ENABLE
-  rccEnableBKPSRAM(true);
-
-  PWR->CSR1 |= PWR_CSR1_BRE;
-  while ((PWR->CSR1 & PWR_CSR1_BRR) == 0)
-    ;                                /* Waits until the regulator is stable */
-//#else
- // PWR->CSR1 &= ~PWR_CSR1_BRE;
-//#endif /* STM32_BKPRAM_ENABLE */
-
-	*((unsigned long *) BKPSRAM_BASE) = 0; // erase the magic
-
+	RTC->BKP0R = 0;	// erase the magic
 	asm(
 			"ldr     r0, =" BOOTLOADER_ADDRESS "\n\t"
 			"ldr     r1, [r0, #0]\n\t"
