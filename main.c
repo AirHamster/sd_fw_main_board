@@ -44,8 +44,10 @@ extern windsensor_t *wind;
 extern ble_t *ble;
 #endif
 #include "eeprom.h"
+#include "sd_math.h"
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
+extern uint32_t __ram0_end__;
 static const WDGConfig wdgcfg = {
   STM32_IWDG_PR_64,
   STM32_IWDG_RL(1000),
@@ -61,6 +63,24 @@ static const WDGConfig wdgcfg = {
 /*===========================================================================*/
 /* Application code.                                                         */
 /*===========================================================================*/
+
+void jump_to_bootloader(void){
+	//chThdTerminate(tp);     /* Requesting termination.                  */
+	  //  chThdWait(tp);          /* Waiting for the actual termination.      */
+	    sdStop(&SD1);           /* Stopping serial port 2.                  */
+	    chSysDisable();
+	    stop_system_timer();
+	   // stop_any_other_interrupt();
+	    chSysEnable();
+
+	    /* Now the main function is again a normal function, no more a
+	       OS thread.*/
+	   // do_funny_stuff();
+
+	    /* Restarting the OS but you could also stop the system or trigger a
+	       reset instead.*/
+	    chSysDisable();
+}
 
 void fill_memory(void){
 #ifdef USE_BNO055_MODULE
@@ -148,9 +168,9 @@ int main(void) {
 	start_ble_module();
 #endif
 
-
+	chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
 #ifdef USE_SD_SHELL
-	start_json_module();
+	//start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
 

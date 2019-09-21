@@ -183,7 +183,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DUSE_SD_SHELL=${USE_SD_SHELL} -DCHPRINTF_USE_FLOAT
+UDEFS = -DUSE_SD_SHELL=${USE_SD_SHELL} -DCHPRINTF_USE_FLOAT -DBOOTLOADER_ADDRESS=\"0x1FF00000\"
 
 # Define ASM defines here
 UADEFS =
