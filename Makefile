@@ -197,7 +197,7 @@ UINCDIR =
 ULIBDIR =
 
 # List all user libraries here
-ULIBS =
+ULIBS = -L./sd_modules/bmx160/bsx_lite/Lib/libalgobsx3_CortexM4F -lalgobsx
 
 
 #
