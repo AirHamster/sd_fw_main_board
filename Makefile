@@ -82,16 +82,18 @@ USE_SERVICE_MODE = TRUE
 USE_BLE_MODULE = TRUE
 USE_UBLOX_GPS_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
-USE_BNO055_MODULE = TRUE
-USE_MICROSD_MODULE = TRUE
+USE_BNO055_MODULE = FALSE
+USE_BMX160_MODULE = TRUE
+USE_MICROSD_MODULE = FALSE
 USE_WINDSENSOR_MODULE = TRUE
 USE_LAG_MODULE = TRUE
 USE_ADC_MODULE = TRUE
 USE_EEPROM_MODULE = TRUE
-USE_MATH_MODULE = TRUE
+USE_MATH_MODULE = FALSE
 
 USER_CFLAGS += -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
 -DUSE_BNO055_MODULE=${USE_BNO055_MODULE}\
+-DUSE_BMX160_MODULE=${USE_BMX160_MODULE}\
 -DUSE_MICROSD_MODULE=${USE_MICROSD_MODULE}\
 -DUSE_WINDSENSOR_MODULE=${USE_WINDSENSOR_MODULE}\
 -DUSE_BLE_MODULE=${USE_BLE_MODULE}\
@@ -141,7 +143,7 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 #include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
-include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
+#include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
 #User makefiles
 include ./sd_modules/sd_modules.mk
 # Define linker script file here
