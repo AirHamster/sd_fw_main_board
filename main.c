@@ -48,7 +48,12 @@ extern ble_t *ble;
 #ifdef USE_MATH_MODULE
 #include "sd_math.h"
 #endif
-#include "bmx160_i2c.h"
+//#include "bmx160_i2c.h"
+#ifdef USE_HMC5883_MODULE
+#include "hmc5883_i2c.h"
+extern hmc5883_t *hmc5883;
+#endif
+extern uint8_t need_calibration;
 const I2CConfig bmx160_i2c_cfg1 = {
   0x30420F13,
 		//0x20E7112A,
@@ -111,6 +116,9 @@ void fill_memory(void){
 #endif
 #ifdef USE_MICROSD_MODULE
 	microsd = calloc(1, sizeof(microsd_t));
+#endif
+#ifdef USE_HMC5883_MODULE
+	hmc5883 = calloc(1, sizeof(hmc5883_t));
 #endif
 }
 /*
@@ -190,23 +198,17 @@ int main(void) {
 
 
 	start_eeprom_module();
-	//i2cStart(&GYRO_IF, &bmx160_i2c_cfg1);
-	//uint8_t buff[3];
-	//buff[0] = BMI160_I2C_ADDR;
-	//buff[0] = BMI160_CHIP_ID_ADDR;
-	//bmx160_read(BMI160_I2C_ADDR, buff, 1);
-	//chprintf(SHELL_IFACE, "Readed or not from BMX160 %x %x %x\r\n", buff[0], buff[1], buff[2]);
-	start_bmx160_module();
+	start_hmc5883_module();
+	//start_bmx160_module();
 
 #ifdef USE_MATH_MODULE
 	start_math_module();
 #endif
 	//	eeprom_write_hw_version();
-	chThdSleepMilliseconds(15);
+	chThdSleepMilliseconds(10000);
 //	eeprom_read_hw_version();
 	//eeprom_check_i2c_bus();
 	toggle_test_output();
-
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
 	 */
