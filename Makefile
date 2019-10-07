@@ -84,12 +84,12 @@ USE_UBLOX_GPS_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
 USE_BNO055_MODULE = TRUE
 USE_BMX160_MODULE = FALSE
-USE_MICROSD_MODULE = FALSE
+USE_MICROSD_MODULE = TRUE
 USE_WINDSENSOR_MODULE = TRUE
 USE_LAG_MODULE = TRUE
 USE_ADC_MODULE = TRUE
 USE_EEPROM_MODULE = TRUE
-USE_MATH_MODULE = FALSE
+USE_MATH_MODULE = TRUE
 USE_HMC5883_MODULE = TRUE
 
 USER_CFLAGS += -DUSE_UBLOX_GPS_MODULE=${USE_UBLOX_GPS_MODULE}\
@@ -145,7 +145,7 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 #include $(CHIBIOS)/test/oslib/oslib_test.mk
 include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
-#include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
+include $(CHIBIOS)/os/various/fatfs_bindings/fatfs.mk
 #User makefiles
 include ./sd_modules/sd_modules.mk
 # Define linker script file here

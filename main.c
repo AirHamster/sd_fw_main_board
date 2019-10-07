@@ -192,7 +192,7 @@ int main(void) {
 
 	//chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
 #ifdef USE_SD_SHELL
-	//start_json_module();
+	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
 
