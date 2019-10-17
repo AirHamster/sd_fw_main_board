@@ -1031,8 +1031,8 @@
                                      PIN_MODE_INPUT(GPIOF_GPIOF_13) |       \
                                      PIN_MODE_INPUT(GPIOF_GPIOF_14) |       \
                                      PIN_MODE_INPUT(GPIOF_GPIOF_15))
-#define VAL_GPIOF_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOF_I2C2_SDA) |    \
-                                     PIN_OTYPE_PUSHPULL(GPIOF_I2C2_SCL) |    \
+#define VAL_GPIOF_OTYPER            (PIN_OTYPE_OPENDRAIN(GPIOF_I2C2_SDA) |    \
+                                     PIN_OTYPE_OPENDRAIN(GPIOF_I2C2_SCL) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOF_GPIOF_2) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOF_ADC3_IN9) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOF_ADC3_IN14) |  \

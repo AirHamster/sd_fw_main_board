@@ -45,7 +45,28 @@ extern windsensor_t *wind;
 extern ble_t *ble;
 #endif
 #include "eeprom.h"
+#ifdef USE_MATH_MODULE
 #include "sd_math.h"
+#endif
+//#include "bmx160_i2c.h"
+#ifdef USE_HMC5883_MODULE
+#include "hmc5883_i2c.h"
+extern hmc5883_t *hmc5883;
+#endif
+
+#ifdef USE_HMC6343_MODULE
+#include "hmc6343_i2c.h"
+extern hmc6343_t *hmc6343;
+#endif
+
+extern uint8_t need_calibration;
+const I2CConfig bmx160_i2c_cfg1 = {
+  0x30420F13,
+		//0x20E7112A,
+ // 0x40B45B69,
+  0,
+  0
+};
 struct ch_semaphore usart1_semaph;
 struct ch_semaphore spi2_semaph;
 extern uint32_t __ram0_end__;
@@ -102,6 +123,12 @@ void fill_memory(void){
 #ifdef USE_MICROSD_MODULE
 	microsd = calloc(1, sizeof(microsd_t));
 #endif
+#ifdef USE_HMC6343_MODULE
+	hmc6343 = calloc(1, sizeof(hmc6343_t));
+#endif
+#ifdef USE_HMC5883_MODULE
+	hmc5883 = calloc(1, sizeof(hmc5883_t));
+#endif
 }
 /*
  * Application entry point.
@@ -121,7 +148,7 @@ int main(void) {
 	//wdgReset(&WDGD1);
 	halInit();
 	chSysInit();
-	wdgStart(&WDGD1, &wdgcfg);
+//	wdgStart(&WDGD1, &wdgcfg);
 	fill_memory();
 #if (__CORTEX_M == 0x03 || __CORTEX_M == 0x04)
     chSysLock();
@@ -149,7 +176,7 @@ int main(void) {
 #endif
 	chThdSleepMilliseconds(30);
 #ifdef USE_MICROSD_MODULE
-	start_microsd_module();
+//	start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
@@ -168,11 +195,20 @@ int main(void) {
 	chThdSleepMilliseconds(100);
 #endif
 
+#ifdef USE_HMC5883_MODULE
+	start_hmc5883_module();
+#endif
+
+#ifdef USE_HMC6343_MODULE
+	chThdSleepMilliseconds(500);
+	start_hmc6343_module();
+#endif
+
 #ifdef USE_BLE_MODULE
 	start_ble_module();
 #endif
 
-	chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
+	//chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
 #ifdef USE_SD_SHELL
 	start_json_module();
 	chThdSleepMilliseconds(15);
@@ -180,16 +216,17 @@ int main(void) {
 
 
 	start_eeprom_module();
+	//start_hmc5883_module();
+	//start_bmx160_module();
 
 #ifdef USE_MATH_MODULE
 	start_math_module();
 #endif
 	//	eeprom_write_hw_version();
-	chThdSleepMilliseconds(15);
+	chThdSleepMilliseconds(10000);
 //	eeprom_read_hw_version();
 	//eeprom_check_i2c_bus();
 	toggle_test_output();
-
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
 	 */
