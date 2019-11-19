@@ -35,6 +35,7 @@ extern bno055_t *bno055;
 #ifdef USE_MICROSD_MODULE
 #include "microsd.h"
 extern microsd_t *microsd;
+extern microsd_fsm_t *microsd_fsm;
 #endif
 #ifdef USE_WINDSENSOR_MODULE
 #include "windsensor.h"
@@ -122,6 +123,7 @@ void fill_memory(void){
 #endif
 #ifdef USE_MICROSD_MODULE
 	microsd = calloc(1, sizeof(microsd_t));
+	microsd_fsm = calloc(1, sizeof(microsd_fsm_t));
 #endif
 #ifdef USE_HMC6343_MODULE
 	hmc6343 = calloc(1, sizeof(hmc6343_t));
@@ -176,7 +178,7 @@ int main(void) {
 #endif
 	chThdSleepMilliseconds(30);
 #ifdef USE_MICROSD_MODULE
-//	start_microsd_module();
+	start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
@@ -208,24 +210,15 @@ int main(void) {
 	start_ble_module();
 #endif
 
-	//chprintf(SHELL_IFACE, "Writed to the end of RAM %x, reset\r\n", *((unsigned long *) BKPSRAM_BASE));
 #ifdef USE_SD_SHELL
 	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
-
-
 	start_eeprom_module();
-	//start_hmc5883_module();
-	//start_bmx160_module();
-
 #ifdef USE_MATH_MODULE
 	start_math_module();
 #endif
-	//	eeprom_write_hw_version();
 	chThdSleepMilliseconds(10000);
-//	eeprom_read_hw_version();
-	//eeprom_check_i2c_bus();
 	toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
