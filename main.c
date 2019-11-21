@@ -60,6 +60,10 @@ extern hmc5883_t *hmc5883;
 extern hmc6343_t *hmc6343;
 #endif
 
+#include "adc.h"
+extern dots_t *r_rudder_dots;
+extern coefs_t *r_rudder_coefs;
+
 extern uint8_t need_calibration;
 const I2CConfig bmx160_i2c_cfg1 = {
   0x30420F13,
@@ -87,24 +91,6 @@ static const WDGConfig wdgcfg = {
 /* Application code.                                                         */
 /*===========================================================================*/
 
-void jump_to_bootloader(void){
-	//chThdTerminate(tp);     /* Requesting termination.                  */
-	  //  chThdWait(tp);          /* Waiting for the actual termination.      */
-	    sdStop(&SD1);           /* Stopping serial port 2.                  */
-	    chSysDisable();
-	    stop_system_timer();
-	   // stop_any_other_interrupt();
-	    chSysEnable();
-
-	    /* Now the main function is again a normal function, no more a
-	       OS thread.*/
-	   // do_funny_stuff();
-
-	    /* Restarting the OS but you could also stop the system or trigger a
-	       reset instead.*/
-	    chSysDisable();
-}
-
 void fill_memory(void){
 #ifdef USE_BNO055_MODULE
 	bno055 = calloc(1, sizeof(bno055_t));
@@ -117,6 +103,8 @@ void fill_memory(void){
 #endif
 #ifdef USE_BLE_MODULE
 	ble = calloc(1, sizeof(ble_t));
+	r_rudder_coefs = calloc(1, sizeof(coefs_t));
+	r_rudder_dots = calloc(1, sizeof(dots_t));
 #endif
 #ifdef USE_SD_SHELL
 	output = calloc(1, sizeof(output_t));
@@ -153,14 +141,14 @@ int main(void) {
 //	wdgStart(&WDGD1, &wdgcfg);
 	fill_memory();
 #if (__CORTEX_M == 0x03 || __CORTEX_M == 0x04)
-    chSysLock();
-    // enable UsageFault, BusFault, MemManageFault
-    SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk |
-                  SCB_SHCSR_BUSFAULTENA_Msk |
-                  SCB_SHCSR_MEMFAULTENA_Msk;
-    // enable fault on division by zero
-    SCB->CCR |= SCB_CCR_DIV_0_TRP_Msk;
-    chSysUnlock();
+	chSysLock();
+	// enable UsageFault, BusFault, MemManageFault
+	SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk |
+	SCB_SHCSR_BUSFAULTENA_Msk |
+	SCB_SHCSR_MEMFAULTENA_Msk;
+	// enable fault on division by zero
+	SCB->CCR |= SCB_CCR_DIV_0_TRP_Msk;
+	chSysUnlock();
 #endif
 
 	chSemObjectInit(&usart1_semaph, 1);
@@ -207,7 +195,9 @@ int main(void) {
 #endif
 
 #ifdef USE_BLE_MODULE
-	start_ble_module();
+	//init coefs for remote rudder calculations
+	//init_coefs(r_rudder_dots, r_rudder_coefs);
+//	start_ble_module();
 #endif
 
 #ifdef USE_SD_SHELL
@@ -219,7 +209,7 @@ int main(void) {
 	start_math_module();
 #endif
 	chThdSleepMilliseconds(10000);
-	toggle_test_output();
+	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
 	 */
