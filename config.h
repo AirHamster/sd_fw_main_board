@@ -32,8 +32,8 @@
 #define RAW_BLE_SENSOR_DATA
 
 #define LAG_ADDR		CCF95781688F
-#define RUDDER_ADDR		CCF957816647
-
+//#define RUDDER_ADDR		CCF957816647
+#define RUDDER_ADDR		D4CA6EBAFDA0
 
 /**
  * @brief   Magic number for jumping to bootloader.

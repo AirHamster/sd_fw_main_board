@@ -197,7 +197,7 @@ int main(void) {
 #ifdef USE_BLE_MODULE
 	//init coefs for remote rudder calculations
 	//init_coefs(r_rudder_dots, r_rudder_coefs);
-//	start_ble_module();
+	start_ble_module();
 #endif
 
 #ifdef USE_SD_SHELL
