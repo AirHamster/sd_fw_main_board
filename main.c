@@ -49,7 +49,9 @@ extern ble_t *ble;
 #ifdef USE_MATH_MODULE
 #include "sd_math.h"
 #endif
-//#include "bmx160_i2c.h"
+#ifdef USE_BMX160_MODULE
+#include "bmx160_i2c.h"
+#endif
 #ifdef USE_HMC5883_MODULE
 #include "hmc5883_i2c.h"
 extern hmc5883_t *hmc5883;
@@ -154,6 +156,7 @@ int main(void) {
 	chSemObjectInit(&usart1_semaph, 1);
 	chSemObjectInit(&spi2_semaph, 1);
 	palClearLine(LINE_RF_868_RST);
+	start_eeprom_module();
 #ifdef USE_SD_SHELL
 	sdStart(&SD1, NULL);
 	shellInit();
@@ -189,6 +192,10 @@ int main(void) {
 	start_hmc5883_module();
 #endif
 
+#ifdef USE_BMX160_MODULE
+	start_bmx160_module();
+#endif
+
 #ifdef USE_HMC6343_MODULE
 	chThdSleepMilliseconds(500);
 	start_hmc6343_module();
@@ -196,7 +203,8 @@ int main(void) {
 
 #ifdef USE_BLE_MODULE
 	//init coefs for remote rudder calculations
-	//init_coefs(r_rudder_dots, r_rudder_coefs);
+	init_coefs(r_rudder_dots, r_rudder_coefs);
+	chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
 	start_ble_module();
 #endif
 
@@ -204,7 +212,7 @@ int main(void) {
 	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
-	start_eeprom_module();
+
 #ifdef USE_MATH_MODULE
 	start_math_module();
 #endif

@@ -83,7 +83,7 @@ USE_BLE_MODULE = TRUE
 USE_UBLOX_GPS_MODULE = TRUE
 SHELL_CONFIG_FILE = TRUE
 USE_BNO055_MODULE = TRUE
-USE_BMX160_MODULE = FALSE
+USE_BMX160_MODULE = TRUE
 USE_MICROSD_MODULE = TRUE
 USE_WINDSENSOR_MODULE = TRUE
 USE_LAG_MODULE = TRUE
@@ -202,7 +202,7 @@ ULIBDIR =
 
 # List all user libraries here
 ULIBS = -L./sd_modules/bmx160/bsx_lite/Lib/libalgobsx3_CortexM4F -lalgobsx
-
+#ULIBS =
 
 #
 # End of user section

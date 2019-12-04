@@ -22,6 +22,7 @@
 //#define USE_HMC5883_MODULE
 #define USE_HMC6343_MODULE
 #define USE_BNO055_MODULE
+#define USE_BMX160_MODULE
 #define USE_MICROSD_MODULE
 #define USE_WINDSENSOR_MODULE
 #define SHELL_CONFIG_FILE
@@ -31,7 +32,7 @@
 // In case that we keep calibrations on main modules
 #define RAW_BLE_SENSOR_DATA
 
-#define LAG_ADDR		CCF95781688F
+#define LAG_ADDR		D4CA6EB91DD3
 //#define RUDDER_ADDR		CCF957816647
 #define RUDDER_ADDR		D4CA6EBAFDA0
 
