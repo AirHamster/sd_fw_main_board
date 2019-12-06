@@ -49,7 +49,9 @@ extern ble_t *ble;
 #ifdef USE_MATH_MODULE
 #include "sd_math.h"
 #endif
-//#include "bmx160_i2c.h"
+#ifdef USE_BMX160_MODULE
+#include "bmx160_i2c.h"
+#endif
 #ifdef USE_HMC5883_MODULE
 #include "hmc5883_i2c.h"
 extern hmc5883_t *hmc5883;
@@ -63,7 +65,7 @@ extern hmc6343_t *hmc6343;
 #include "adc.h"
 extern dots_t *r_rudder_dots;
 extern coefs_t *r_rudder_coefs;
-
+extern rudder_t *r_rudder;
 extern uint8_t need_calibration;
 const I2CConfig bmx160_i2c_cfg1 = {
   0x30420F13,
@@ -154,6 +156,7 @@ int main(void) {
 	chSemObjectInit(&usart1_semaph, 1);
 	chSemObjectInit(&spi2_semaph, 1);
 	palClearLine(LINE_RF_868_RST);
+	start_eeprom_module();
 #ifdef USE_SD_SHELL
 	sdStart(&SD1, NULL);
 	shellInit();
@@ -189,22 +192,34 @@ int main(void) {
 	start_hmc5883_module();
 #endif
 
+#ifdef USE_BMX160_MODULE
+	start_bmx160_module();
+#endif
+
 #ifdef USE_HMC6343_MODULE
 	chThdSleepMilliseconds(500);
 	start_hmc6343_module();
 #endif
 
 #ifdef USE_BLE_MODULE
+	start_ble_module();
 	//init coefs for remote rudder calculations
-	//init_coefs(r_rudder_dots, r_rudder_coefs);
-//	start_ble_module();
+	init_coefs(r_rudder_dots, r_rudder_coefs);
+	//chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
+	r_rudder->min_native = r_rudder_dots->x1;
+	r_rudder->center_native = r_rudder_dots->x2;
+	r_rudder->max_native = r_rudder_dots->x3;
+	r_rudder->min_degrees = r_rudder_dots->y1;
+	r_rudder->center_degrees = r_rudder_dots->y2;
+	r_rudder->max_degrees = r_rudder_dots->y3;
+	//start_ble_module();
 #endif
 
 #ifdef USE_SD_SHELL
 	start_json_module();
 	chThdSleepMilliseconds(15);
 #endif
-	start_eeprom_module();
+
 #ifdef USE_MATH_MODULE
 	start_math_module();
 #endif
