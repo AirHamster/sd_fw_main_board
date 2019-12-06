@@ -65,7 +65,7 @@ extern hmc6343_t *hmc6343;
 #include "adc.h"
 extern dots_t *r_rudder_dots;
 extern coefs_t *r_rudder_coefs;
-
+extern rudder_t *r_rudder;
 extern uint8_t need_calibration;
 const I2CConfig bmx160_i2c_cfg1 = {
   0x30420F13,
@@ -202,10 +202,17 @@ int main(void) {
 #endif
 
 #ifdef USE_BLE_MODULE
+	start_ble_module();
 	//init coefs for remote rudder calculations
 	init_coefs(r_rudder_dots, r_rudder_coefs);
-	chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
-	start_ble_module();
+	//chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
+	r_rudder->min_native = r_rudder_dots->x1;
+	r_rudder->center_native = r_rudder_dots->x2;
+	r_rudder->max_native = r_rudder_dots->x3;
+	r_rudder->min_degrees = r_rudder_dots->y1;
+	r_rudder->center_degrees = r_rudder_dots->y2;
+	r_rudder->max_degrees = r_rudder_dots->y3;
+	//start_ble_module();
 #endif
 
 #ifdef USE_SD_SHELL
