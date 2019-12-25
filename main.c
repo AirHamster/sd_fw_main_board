@@ -156,6 +156,7 @@ int main(void) {
 	chSemObjectInit(&usart1_semaph, 1);
 	chSemObjectInit(&spi2_semaph, 1);
 	palClearLine(LINE_RF_868_RST);
+	palClearLine(LINE_NINA_CTS);
 	start_eeprom_module();
 #ifdef USE_SD_SHELL
 	sdStart(&SD1, NULL);
@@ -169,12 +170,12 @@ int main(void) {
 #endif
 	chThdSleepMilliseconds(30);
 #ifdef USE_MICROSD_MODULE
-	start_microsd_module();
+	//start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
 #ifdef USE_WINDSENSOR_MODULE
-	start_windsensor_module();
+	//start_windsensor_module();
 	chThdSleepMilliseconds(15);
 #endif
 	wdgReset(&WDGD1);
@@ -184,7 +185,7 @@ int main(void) {
 #endif
 	wdgReset(&WDGD1);
 #ifdef USE_BNO055_MODULE
-	start_bno055_module();
+	//start_bno055_module();
 	chThdSleepMilliseconds(100);
 #endif
 
@@ -204,7 +205,7 @@ int main(void) {
 #ifdef USE_BLE_MODULE
 	start_ble_module();
 	//init coefs for remote rudder calculations
-	init_coefs(r_rudder_dots, r_rudder_coefs);
+	//init_coefs(r_rudder_dots, r_rudder_coefs);
 	//chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
 	r_rudder->min_native = r_rudder_dots->x1;
 	r_rudder->center_native = r_rudder_dots->x2;
@@ -221,7 +222,7 @@ int main(void) {
 #endif
 
 #ifdef USE_MATH_MODULE
-	start_math_module();
+	//start_math_module();
 #endif
 	chThdSleepMilliseconds(10000);
 	//toggle_test_output();
