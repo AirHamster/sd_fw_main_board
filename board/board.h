@@ -277,8 +277,8 @@
 #define LINE_SWDIO                  PAL_LINE(GPIOA, 13U)
 #define LINE_SWCLK                  PAL_LINE(GPIOA, 14U)
 #define LINE_GPIOA_15              PAL_LINE(GPIOA, 15U)
-#define LINE_GREEN_LED             	PAL_LINE(GPIOB, 0U)
-#define LINE_ORANGE_LED             PAL_LINE(GPIOB, 1U)
+#define LINE_GREEN_LED             	PAL_LINE(GPIOB, 1U)
+#define LINE_ORANGE_LED             PAL_LINE(GPIOB, 0U)
 #define LINE_RED_LED                PAL_LINE(GPIOB, 2U)
 #define LINE_USART7_RX              PAL_LINE(GPIOB, 3U)
 #define LINE_BUZZER                 PAL_LINE(GPIOB, 4U)
@@ -373,6 +373,8 @@
 #define LINE_OSC_IN                 PAL_LINE(GPIOH, 0U)
 #define LINE_OSC_OUT                PAL_LINE(GPIOH, 1U)
 
+#define LINE_SUSART1_RX				PAL_LINE(GPIOC, 9U)
+#define LINE_SUSART1_TX				PAL_LINE(GPIOA, 8U)
 /*===========================================================================*/
 /* Driver pre-compile time settings.                                         */
 /*===========================================================================*/
@@ -439,7 +441,7 @@
                                      PIN_MODE_ALTERNATE(GPIOA_SPI1_SCK) |   \
                                      PIN_MODE_ALTERNATE(GPIOA_SPI1_MISO) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_SPI1_MOSI) |  \
-                                     PIN_MODE_ALTERNATE(GPIOA_I2C3_SCL) |   \
+                                     PIN_MODE_OUTPUT(GPIOA_I2C3_SCL) |   \
                                      PIN_MODE_ALTERNATE(GPIOA_USART1_TX) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_USART1_RX) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_USB_DM) |     \
@@ -674,7 +676,7 @@
                                      PIN_MODE_INPUT(GPIOC_GPIOC_6) |        \
                                      PIN_MODE_INPUT(GPIOC_GPIOC_7) |        \
                                      PIN_MODE_INPUT(GPIOC_GPIOC_8) |         \
-                                     PIN_MODE_ALTERNATE(GPIOC_I2C3_SDA) |   \
+                                     PIN_MODE_INPUT(GPIOC_I2C3_SDA) |   \
                                      PIN_MODE_ALTERNATE(GPIOC_SPI3_CLK) |   \
                                      PIN_MODE_ALTERNATE(GPIOC_SPI3_MISO) |  \
                                      PIN_MODE_ALTERNATE(GPIOC_USART5_TX) |  \
@@ -690,7 +692,7 @@
                                      PIN_OTYPE_PUSHPULL(GPIOC_GPIOC_6) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOC_GPIOC_7) |    \
                                      PIN_OTYPE_PUSHPULL(GPIOC_GPIOC_8) |      \
-                                     PIN_OTYPE_PUSHPULL(GPIOC_I2C3_SDA) |   \
+                                     PIN_OTYPE_OPENDRAIN(GPIOC_I2C3_SDA) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOC_SPI3_CLK) |   \
                                      PIN_OTYPE_PUSHPULL(GPIOC_SPI3_MISO) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOC_USART5_TX) |  \

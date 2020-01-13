@@ -62,6 +62,10 @@ extern hmc5883_t *hmc5883;
 extern hmc6343_t *hmc6343;
 #endif
 
+#ifdef USE_MCU_MCU_MODULE
+#include "mcu-mcu_i2c.h"
+#endif
+
 #include "adc.h"
 extern dots_t *r_rudder_dots;
 extern coefs_t *r_rudder_coefs;
@@ -215,7 +219,9 @@ int main(void) {
 	r_rudder->max_degrees = r_rudder_dots->y3;
 	//start_ble_module();
 #endif
-
+#ifdef USE_MCU_MCU_MODULE
+	start_mcu_mcu_module();
+#endif
 #ifdef USE_SD_SHELL
 	start_json_module();
 	chThdSleepMilliseconds(15);

@@ -26,9 +26,9 @@
 #define USE_MICROSD_MODULE
 #define USE_WINDSENSOR_MODULE
 #define SHELL_CONFIG_FILE
-#define USE_BLE_MODULE
+//#define USE_BLE_MODULE
 #define USE_MATH_MODULE
-
+#define USE_MCU_MCU_MODULE
 // In case that we keep calibrations on main modules
 #define RAW_BLE_SENSOR_DATA
 
