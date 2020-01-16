@@ -17,7 +17,7 @@
 //#define USE_MPU_9250_MODULE
 #define USE_UBLOX_GPS_MODULE
 //#define USE_IRIDIUM_9603_MODULE
-//#define USE_XBEE_868_MODULE
+#define USE_XBEE_MODULE
 #define USE_EEPROM_MODULE
 //#define USE_HMC5883_MODULE
 //#define USE_HMC6343_MODULE
@@ -48,6 +48,7 @@
 #define SHELL_SD		SD1
 #define SHELL_IFACE		(BaseSequentialStream*)&SD1
 #define EEPROM_IF		I2CD1
+#define XBEE_IF			SPID1
 #define GPS_IF			SPID4
 #define GYRO_IF			I2CD2
 #define MICROSD_IF		SPID3

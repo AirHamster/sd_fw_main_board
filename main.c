@@ -28,6 +28,9 @@ extern ubx_nav_pvt_t *pvt_box;
 #include "sd_shell_cmds.h"
 extern output_t *output;
 #endif
+#ifdef USE_XBEE_MODULE
+#include "xbee.h"
+#endif
 #ifdef USE_BNO055_MODULE
 #include "bno055_i2c.h"
 extern bno055_t *bno055;
@@ -198,7 +201,7 @@ int main(void) {
 #endif
 
 #ifdef USE_BMX160_MODULE
-	start_bmx160_module();
+//	start_bmx160_module();
 #endif
 
 #ifdef USE_HMC6343_MODULE
@@ -230,8 +233,13 @@ int main(void) {
 #ifdef USE_MATH_MODULE
 	//start_math_module();
 #endif
+
+#ifdef USE_XBEE_MODULE
+	start_xbee_module();
+#endif
+
 	chThdSleepMilliseconds(10000);
-	//toggle_test_output();
+	toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
 	 */

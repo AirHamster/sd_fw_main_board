@@ -1068,7 +1068,7 @@
                                      PIN_OSPEED_VERYLOW(GPIOF_GPIOF_15))
 #define VAL_GPIOF_PUPDR             (PIN_PUPDR_PULLUP(GPIOF_I2C2_SDA) |      \
                                      PIN_PUPDR_PULLUP(GPIOF_I2C2_SCL) |      \
-                                     PIN_PUPDR_PULLUP(GPIOF_RF_868_SPI_ATTN) |      \
+                                     PIN_PUPDR_FLOATING(GPIOF_RF_868_SPI_ATTN) |      \
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN9) |     \
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN14) |    \
                                      PIN_PUPDR_PULLUP(GPIOF_ADC3_IN15) |    \
