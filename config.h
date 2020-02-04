@@ -10,31 +10,48 @@
 #define CONFIG_H_
 
 #define SD_MODULE_TRAINER
+//#define SD_MODULE_BUOY
+//#define SD_MODULE_SPORTSMEN
+
+//Common modules
 #define SHELL_CONFIG_FILE
 #define USE_DEBUG_SHELL
 #define USE_SD_SHELL
 #define USE_SERVICE_MODE
-//#define USE_MPU_9250_MODULE
 #define USE_UBLOX_GPS_MODULE
-//#define USE_IRIDIUM_9603_MODULE
 #define USE_XBEE_MODULE
 #define USE_EEPROM_MODULE
-//#define USE_HMC5883_MODULE
-//#define USE_HMC6343_MODULE
+#define USE_MCU_MCU_MODULE
+
 #define USE_BNO055_MODULE
 #define USE_BMX160_MODULE
+
 #define USE_MICROSD_MODULE
+
+#ifdef SD_MODULE_TRAINER
 #define USE_WINDSENSOR_MODULE
-#define SHELL_CONFIG_FILE
 #define USE_BLE_MODULE
 #define USE_MATH_MODULE
-#define USE_MCU_MCU_MODULE
+#endif
+
+//#define USE_MPU_9250_MODULE
+//#define USE_IRIDIUM_9603_MODULE
+//#define USE_HMC5883_MODULE
+//#define USE_HMC6343_MODULE
+
 // In case that we keep calibrations on main modules
 #define RAW_BLE_SENSOR_DATA
 
 #define LAG_ADDR		D4CA6EB91DD3
 //#define RUDDER_ADDR		CCF957816647
 #define RUDDER_ADDR		D4CA6EBAFDA0
+
+/*
+#define TENSO_1
+#define TENSO_2
+#define TENSO_3
+#define TENSO_4
+*/
 
 /**
  * @brief   Magic number for jumping to bootloader.
@@ -55,5 +72,5 @@
 #define BLE_IF			SD7
 #define NINA_IF			SD7
 #define NINA_IFACE		(BaseSequentialStream*)&SD7
-#define WIND_IF		UARTD8
+#define WIND_IF			UARTD8
 #endif /* CONFIG_H_ */
