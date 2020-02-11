@@ -1020,7 +1020,7 @@
  */
 #define VAL_GPIOF_MODER             (PIN_MODE_ALTERNATE(GPIOF_I2C2_SDA) |        \
                                      PIN_MODE_ALTERNATE(GPIOF_I2C2_SCL) |        \
-                                     PIN_MODE_INPUT(GPIOF_RF_868_SPI_ATTN) |        \
+                                     PIN_MODE_ANALOG(GPIOF_RF_868_SPI_ATTN) |        \
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN9) |      \
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN14) |     \
                                      PIN_MODE_ANALOG(GPIOF_ADC3_IN15) |     \

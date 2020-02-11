@@ -171,7 +171,7 @@ int main(void) {
 	chSemWait(&usart1_semaph);
 	sh = cmd_init();
 	chSemSignal(&usart1_semaph);
-	wdgReset(&WDGD1);
+	//wdgReset(&WDGD1);
 #else
 	sdStart(&SD1, NULL);
 #endif
@@ -180,17 +180,17 @@ int main(void) {
 	//start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
-	wdgReset(&WDGD1);
+	//wdgReset(&WDGD1);
 #ifdef USE_WINDSENSOR_MODULE
 	//start_windsensor_module();
 	chThdSleepMilliseconds(15);
 #endif
-	wdgReset(&WDGD1);
+	//wdgReset(&WDGD1);
 #ifdef USE_UBLOX_GPS_MODULE
 	start_gps_module();
 	chThdSleepMilliseconds(15);
 #endif
-	wdgReset(&WDGD1);
+	//wdgReset(&WDGD1);
 #ifdef USE_BNO055_MODULE
 	//start_bno055_module();
 	chThdSleepMilliseconds(100);
@@ -201,7 +201,7 @@ int main(void) {
 #endif
 
 #ifdef USE_BMX160_MODULE
-//	start_bmx160_module();
+	start_bmx160_module();
 #endif
 
 #ifdef USE_HMC6343_MODULE
@@ -239,7 +239,7 @@ int main(void) {
 #endif
 
 	chThdSleepMilliseconds(10000);
-	toggle_test_output();
+	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.
 	 */
