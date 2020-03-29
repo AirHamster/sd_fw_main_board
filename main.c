@@ -20,6 +20,7 @@
 #include "hal.h"
 #include "shell.h"
 #include "config.h"
+#include "json_output.h"
 #ifdef USE_UBLOX_GPS_MODULE
 #include "neo-m8.h"
 extern ubx_nav_pvt_t *pvt_box;
@@ -46,7 +47,7 @@ extern windsensor_t *wind;
 #endif
 #ifdef USE_BLE_MODULE
 #include "nina-b3.h"
-extern ble_t *ble;
+
 #endif
 #include "eeprom.h"
 #ifdef USE_MATH_MODULE
@@ -111,7 +112,7 @@ void fill_memory(void){
 	wind = calloc(1, sizeof(windsensor_t));
 #endif
 #ifdef USE_BLE_MODULE
-	ble = calloc(1, sizeof(ble_t));
+	//ble = calloc(1, sizeof(ble_t));
 	r_rudder_coefs = calloc(1, sizeof(coefs_t));
 	r_rudder_dots = calloc(1, sizeof(dots_t));
 #endif
@@ -225,6 +226,7 @@ int main(void) {
 #ifdef USE_MCU_MCU_MODULE
 	start_mcu_mcu_module();
 #endif
+
 #ifdef USE_SD_SHELL
 	start_json_module();
 	chThdSleepMilliseconds(15);
