@@ -233,14 +233,14 @@ int main(void) {
 #endif
 
 #ifdef USE_MATH_MODULE
-	//start_math_module();
+	start_math_module();
 #endif
 
 #ifdef USE_XBEE_MODULE
 	start_xbee_module();
 #endif
 
-	chThdSleepMilliseconds(10000);
+	chThdSleepMilliseconds(1000);
 	//toggle_test_output();
 	/*
 	 * Normal main() thread activity, in this demo it does nothing.

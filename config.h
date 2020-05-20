@@ -9,9 +9,10 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#define SD_MAIN_MODULE
 #define SD_MODULE_TRAINER
 //#define SD_MODULE_BUOY
-//#define SD_MODULE_SPORTSMEN
+//#define SD_MODULE_SPORTSMAN
 
 //Common modules
 #define SHELL_CONFIG_FILE
@@ -30,7 +31,7 @@
 #define USE_RUDDER_MODULE
 #define USE_ADC_MODULE
 
-#ifdef SD_MODULE_TRAINER
+#ifdef SD_MAIN_MODULE
 #define USE_WINDSENSOR_MODULE
 #define USE_BLE_MODULE
 #define USE_MATH_MODULE

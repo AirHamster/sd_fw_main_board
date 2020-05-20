@@ -14,6 +14,9 @@
 #include <ch.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <stdlib.h>
+
 // Can be uncommented to see backtrace.
 #define DEBUG_BACKTRACE
 
@@ -138,7 +141,7 @@ void MemManage_Handler(void) {
     struct port_extctx ctx;
     memcpy(&ctx, (void*)__get_PSP(), sizeof(struct port_extctx));
     (void)ctx;
-    //Interrupt status register: Which interrupt have we encountered, e.g. HardFault?
+    //Interrupt status register: Which interrupabortt have we encountered, e.g. HardFault?
     FaultType faultType = (FaultType)__get_IPSR();
     (void)faultType;
     //For HardFault/BusFault this is the address that was accessed causing the error
@@ -160,3 +163,28 @@ void MemManage_Handler(void) {
     NVIC_SystemReset();
 #endif
 }
+
+pid_t _getpid()
+{
+	return 0;
+}
+
+void _exit( int status )
+{
+	(void)status;
+	while( 1 );
+}
+
+int _kill( int pid, int sig )
+{
+	(void)pid; (void)sig;
+	return -1;
+}
+
+int _open_r(void *reent, const char *file, int flags, int mode)
+{
+	(void)reent; (void)file; (void)flags; (void)mode;
+	return -1;
+}
+
+void *__dso_handle = NULL;
