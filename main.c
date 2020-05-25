@@ -77,8 +77,6 @@ extern rudder_t *r_rudder;
 extern uint8_t need_calibration;
 const I2CConfig bmx160_i2c_cfg1 = {
   0x30420F13,
-		//0x20E7112A,
- // 0x40B45B69,
   0,
   0
 };
@@ -90,12 +88,6 @@ static const WDGConfig wdgcfg = {
   STM32_IWDG_RL(1000),
   0xFFF					//Windowed watchdog workaround
 };
-
-/**
- * Executes the BKPT instruction that causes the debugger to stop.
- * If no debugger is attached, this will be ignored
- */
-
 
 /*===========================================================================*/
 /* Application code.                                                         */
@@ -145,6 +137,7 @@ int main(void) {
 	 * - Kernel initialization, the main() function becomes a thread and the
 	 *   RTOS is active.
 	 */
+
 	//wdgReset(&WDGD1);
 	halInit();
 	chSysInit();
@@ -176,20 +169,21 @@ int main(void) {
 #else
 	sdStart(&SD1, NULL);
 #endif
-	chThdSleepMilliseconds(30);
-#ifdef USE_MICROSD_MODULE
-	//start_microsd_module();
-	chThdSleepMilliseconds(15);
+
+#ifdef USE_MATH_MODULE
+	start_math_module();
 #endif
+	chThdSleepMilliseconds(30);
+
 	//wdgReset(&WDGD1);
 #ifdef USE_WINDSENSOR_MODULE
-	//start_windsensor_module();
+	start_windsensor_module();
 	chThdSleepMilliseconds(15);
 #endif
 	//wdgReset(&WDGD1);
 #ifdef USE_UBLOX_GPS_MODULE
 	start_gps_module();
-	chThdSleepMilliseconds(15);
+	chThdSleepMilliseconds(1500);
 #endif
 	//wdgReset(&WDGD1);
 #ifdef USE_BNO055_MODULE
@@ -212,16 +206,12 @@ int main(void) {
 
 #ifdef USE_BLE_MODULE
 	start_ble_module();
-	//init coefs for remote rudder calculations
-	//init_coefs(r_rudder_dots, r_rudder_coefs);
-	//chprintf((BaseSequentialStream*) &SD1, "Dots: %f %f %f %f %f %f\r\n", r_rudder_dots->x1, r_rudder_dots->x2, r_rudder_dots->x3, r_rudder_dots->y1, r_rudder_dots->y2, r_rudder_dots->y3);
 	r_rudder->min_native = r_rudder_dots->x1;
 	r_rudder->center_native = r_rudder_dots->x2;
 	r_rudder->max_native = r_rudder_dots->x3;
 	r_rudder->min_degrees = r_rudder_dots->y1;
 	r_rudder->center_degrees = r_rudder_dots->y2;
 	r_rudder->max_degrees = r_rudder_dots->y3;
-	//start_ble_module();
 #endif
 #ifdef USE_MCU_MCU_MODULE
 	start_mcu_mcu_module();
@@ -232,8 +222,9 @@ int main(void) {
 	chThdSleepMilliseconds(15);
 #endif
 
-#ifdef USE_MATH_MODULE
-	start_math_module();
+#ifdef USE_MICROSD_MODULE
+	start_microsd_module();
+	chThdSleepMilliseconds(15);
 #endif
 
 #ifdef USE_XBEE_MODULE
@@ -241,10 +232,8 @@ int main(void) {
 #endif
 
 	chThdSleepMilliseconds(1000);
-	//toggle_test_output();
-	/*
-	 * Normal main() thread activity, in this demo it does nothing.
-	 */
+	toggle_test_output();
+
 	while (true) {
 #ifdef USE_SD_SHELL
 		if (!sh)
