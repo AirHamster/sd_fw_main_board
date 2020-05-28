@@ -223,7 +223,7 @@ int main(void) {
 #endif
 
 #ifdef USE_MICROSD_MODULE
-	start_microsd_module();
+	//start_microsd_module();
 	chThdSleepMilliseconds(15);
 #endif
 

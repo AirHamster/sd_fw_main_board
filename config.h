@@ -10,9 +10,9 @@
 #define CONFIG_H_
 
 #define SD_MAIN_MODULE
-#define SD_MODULE_TRAINER
+//#define SD_MODULE_TRAINER
 //#define SD_MODULE_BUOY
-//#define SD_MODULE_SPORTSMAN
+#define SD_MODULE_SPORTSMAN
 
 //Common modules
 #define SHELL_CONFIG_FILE
