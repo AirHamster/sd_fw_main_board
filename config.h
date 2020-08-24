@@ -14,6 +14,9 @@
 //#define SD_MODULE_BUOY
 #define SD_MODULE_SPORTSMAN
 
+//#define SPORTSMAN_1
+#define SPORTSMAN_2
+
 //Common modules
 #define SHELL_CONFIG_FILE
 #define USE_DEBUG_SHELL

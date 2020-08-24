@@ -141,7 +141,7 @@ int main(void) {
 	//wdgReset(&WDGD1);
 	halInit();
 	chSysInit();
-//	wdgStart(&WDGD1, &wdgcfg);
+
 	fill_memory();
 #if (__CORTEX_M == 0x03 || __CORTEX_M == 0x04)
 	chSysLock();
@@ -158,6 +158,16 @@ int main(void) {
 	chSemObjectInit(&spi2_semaph, 1);
 	palClearLine(LINE_RF_868_RST);
 	palClearLine(LINE_NINA_CTS);
+uint32_t hz = RTC->BKP0R;
+	//check_first_reboot
+	if (RTC->BKP0R != 1)
+	{
+		RTC->BKP0R = 1;
+		chThdSleepMilliseconds(1500);
+		hz = RTC->BKP0R;
+		NVIC_SystemReset();
+	}
+
 	start_eeprom_module();
 #ifdef USE_SD_SHELL
 	sdStart(&SD1, NULL);
@@ -170,8 +180,10 @@ int main(void) {
 	sdStart(&SD1, NULL);
 #endif
 
+
 #ifdef USE_MATH_MODULE
-	start_math_module();
+//	start_math_module();
+	calib_init_params();
 #endif
 	chThdSleepMilliseconds(30);
 
@@ -183,7 +195,7 @@ int main(void) {
 	//wdgReset(&WDGD1);
 #ifdef USE_UBLOX_GPS_MODULE
 	start_gps_module();
-	chThdSleepMilliseconds(1500);
+	//chThdSleepMilliseconds(1500);
 #endif
 	//wdgReset(&WDGD1);
 #ifdef USE_BNO055_MODULE
@@ -222,16 +234,18 @@ int main(void) {
 	chThdSleepMilliseconds(15);
 #endif
 
-#ifdef USE_MICROSD_MODULE
-	//start_microsd_module();
-	chThdSleepMilliseconds(15);
-#endif
+
 
 #ifdef USE_XBEE_MODULE
 	start_xbee_module();
+	chThdSleepMilliseconds(15);
 #endif
+#ifdef USE_MICROSD_MODULE
+	start_microsd_module();
+	chThdSleepMilliseconds(15);
+#endif
+	//wdgStart(&WDGD1, &wdgcfg);
 
-	chThdSleepMilliseconds(1000);
 	toggle_test_output();
 
 	while (true) {
